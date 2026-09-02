@@ -61,7 +61,7 @@ export default function AddBrandModal({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          backgroundColor: "#1e40af",
+          background: "linear-gradient(135deg, #7c3aed, #9333ea)",
           color: "#ffffff",
           py: 2,
           px: 3,
@@ -109,12 +109,12 @@ export default function AddBrandModal({
             variant="contained"
             startIcon={<AddCircleIcon />}
             sx={{
-              background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
               fontWeight: 700,
               textTransform: "none",
               px: 3,
               borderRadius: 1.5,
-              "&:hover": { background: "linear-gradient(135deg, #1e3a8a, #2563eb)" },
+              "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
             }}
           >
             Add Brand

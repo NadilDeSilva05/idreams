@@ -102,7 +102,7 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700, fontSize: "1.25rem", color: "#1e293b", display: "flex", alignItems: "center", gap: 1 }}>
-        {initialData ? <EditIcon sx={{ color: "#1e40af" }} /> : <AddCircleIcon sx={{ color: "#1e40af" }} />}
+        {initialData ? <EditIcon sx={{ color: "#7c3aed" }} /> : <AddCircleIcon sx={{ color: "#7c3aed" }} />}
         {initialData ? "Edit Repair Ticket" : "Add New Repair Ticket"}
       </DialogTitle>
       <DialogContent>
@@ -113,7 +113,7 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
             <Select value={deviceType} label="Device Type" onChange={(e) => setDeviceType(e.target.value as any)}>
               <MenuItem value="smartphone">
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <SmartphoneIcon sx={{ fontSize: 18, color: "#1e40af" }} /> Smartphone
+                  <SmartphoneIcon sx={{ fontSize: 18, color: "#7c3aed" }} /> Smartphone
                 </Box>
               </MenuItem>
               <MenuItem value="laptop">
@@ -206,8 +206,9 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
           onClick={handleSubmit}
           variant="contained"
           sx={{
-            background: "linear-gradient(135deg, #1e40af, #1e3a8a)",
+            background: "linear-gradient(135deg, #7c3aed, #ea580c)",
             fontWeight: 700,
+            "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
           }}
         >
           {initialData ? "Update" : "Create"} Repair

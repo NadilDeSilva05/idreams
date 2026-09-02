@@ -38,7 +38,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import AddIcon from "@mui/icons-material/Add";
-import { accessoriesData, categoryLabels, Accessory } from "@/data/accessoriesData";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useAccessories, Accessory, categoryLabels } from "@/hooks/useAccessories";
 import { useCart } from "@/context/cart-context";
 import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
 import AddAccessoryModal from "@/components/accessories/AddAccessoryModal";
@@ -54,7 +55,7 @@ type AccessorySelection = {
 
 export default function AccessoriesPage() {
   const { addToCart } = useCart();
-  const [accessories, setAccessories] = useState<Accessory[]>(accessoriesData);
+  const { accessories, loading, addAccessory } = useAccessories();
   const [activeCategory, setActiveCategory] = useState<CategoryType>("all");
   const [selectedAccessory, setSelectedAccessory] = useState<AccessorySelection | null>(null);
   const [enteredPrice, setEnteredPrice] = useState("");
@@ -135,13 +136,8 @@ export default function AccessoriesPage() {
     setEnteredPrice("");
   };
 
-  const handleAddAccessory = (newAccessoryData: Omit<Accessory, "id">) => {
-    const newId = `acc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const newAccessory: Accessory = {
-      ...newAccessoryData,
-      id: newId,
-    };
-    setAccessories([newAccessory, ...accessories]);
+  const handleAddAccessory = async (newAccessoryData: Omit<Accessory, "id">) => {
+    await addAccessory(newAccessoryData);
     if (activeCategory !== "all" && activeCategory !== newAccessoryData.category) {
       setActiveCategory(newAccessoryData.category);
     }
@@ -169,18 +165,28 @@ export default function AccessoriesPage() {
           position="sticky"
           sx={{
             backgroundColor: "#ffffff",
-            boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)",
+            boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
           }}
         >
-          <Toolbar>
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ flexGrow: 1, fontWeight: 800, color: "#1e40af", display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <HeadphonesIcon sx={{ color: "#1e40af" }} />
-              Accessories Store
-            </Typography>
+          <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ height: 32, display: "flex", alignItems: "center" }}>
+                <img
+                  src="/Images/i Dreams.png"
+                  alt="iDreams Logo"
+                  style={{ height: "100%", objectFit: "contain" }}
+                />
+              </Box>
+              <Divider orientation="vertical" flexItem sx={{ height: 18, my: "auto" }} />
+              <Typography
+                variant="h6"
+                component="div"
+                sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 0.75 }}
+              >
+                <HeadphonesIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
+                Accessories Store
+              </Typography>
+            </Box>
             <CartButton />
           </Toolbar>
         </AppBar>
@@ -202,7 +208,7 @@ export default function AccessoriesPage() {
               scrollButtons="auto"
               sx={{
                 "& .MuiTabs-indicator": {
-                  backgroundColor: "#1e40af",
+                  backgroundColor: "#7c3aed",
                   height: 3.5,
                 },
                 "& .MuiTab-root": {
@@ -213,7 +219,7 @@ export default function AccessoriesPage() {
                   py: 1.5,
                 },
                 "& .Mui-selected": {
-                  color: "#1e40af",
+                  color: "#7c3aed",
                   fontWeight: 700,
                 },
               }}
@@ -254,7 +260,7 @@ export default function AccessoriesPage() {
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <FilterAltIcon sx={{ color: "#1e40af", fontSize: 20 }} />
+                <FilterAltIcon sx={{ color: "#7c3aed", fontSize: 20 }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#1e293b" }}>
                   Filter & Search Accessories
                 </Typography>
@@ -276,15 +282,15 @@ export default function AccessoriesPage() {
                   startIcon={<AddIcon />}
                   onClick={() => setIsAddModalOpen(true)}
                   sx={{
-                    background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                    background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                     fontWeight: 700,
                     fontSize: "0.85rem",
                     textTransform: "none",
                     borderRadius: 2,
                     px: 2.2,
                     py: 0.8,
-                    boxShadow: "0 4px 14px rgba(30, 64, 175, 0.25)",
-                    "&:hover": { background: "linear-gradient(135deg, #1e3a8a, #2563eb)" },
+                    boxShadow: "0 4px 14px rgba(124, 58, 237, 0.25)",
+                    "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
                   }}
                 >
                   Add Accessory
@@ -377,18 +383,26 @@ export default function AccessoriesPage() {
               <Chip
                 label={`${filteredProducts.length} items found`}
                 sx={{
-                  background: "linear-gradient(135deg, #1e40af15, #3b82f615)",
-                  border: "1px solid #93c5fd",
-                  color: "#1e40af",
+                  background: "linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(234, 88, 12, 0.1))",
+                  border: "1px solid #ddd6fe",
+                  color: "#7c3aed",
                   fontWeight: 700,
                 }}
               />
             </Box>
           </Box>
 
+          {/* Loading Spinner */}
+          {loading && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 10 }}>
+              <CircularProgress sx={{ color: "#7c3aed" }} />
+            </Box>
+          )}
+
           {/* Products Grid */}
-          <Grid container spacing={3}>
-            {filteredProducts.map((product) => (
+          {!loading && (
+            <Grid container spacing={3}>
+              {filteredProducts.map((product) => (
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
                 <Card
                   sx={{
@@ -401,8 +415,8 @@ export default function AccessoriesPage() {
                     backgroundColor: "#ffffff",
                     "&:hover": {
                       transform: "translateY(-6px)",
-                      boxShadow: "0 12px 24px rgba(30, 64, 175, 0.12)",
-                      borderColor: "#3b82f6",
+                      boxShadow: "0 12px 24px rgba(124, 58, 237, 0.12)",
+                      borderColor: "#7c3aed",
                     },
                   }}
                 >
@@ -412,11 +426,11 @@ export default function AccessoriesPage() {
                         label={categoryLabels[product.category] || product.category}
                         size="small"
                         sx={{
-                          backgroundColor: "#eff6ff",
-                          color: "#1e40af",
+                          backgroundColor: "#f5f3ff",
+                          color: "#7c3aed",
                           fontWeight: 700,
                           fontSize: "0.68rem",
-                          border: "1px solid #dbeafe",
+                          border: "1px solid #ddd6fe",
                         }}
                       />
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -474,7 +488,7 @@ export default function AccessoriesPage() {
                       <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
                         Retail Price
                       </Typography>
-                      <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#1e40af" }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#7c3aed" }}>
                         Rs. {product.price.toLocaleString("en-LK")}
                       </Typography>
                     </Box>
@@ -488,13 +502,14 @@ export default function AccessoriesPage() {
                       onClick={() => handleOpenPriceDialog(product)}
                       disabled={!product.inStock}
                       sx={{
-                        background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                        background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                         fontWeight: 700,
                         py: 0.9,
                         fontSize: "0.85rem",
                         textTransform: "none",
                         borderRadius: 1.5,
-                        "&:hover": { background: "linear-gradient(135deg, #1e3a8a, #2563eb)" },
+                        boxShadow: "0 3px 8px rgba(124, 58, 237, 0.2)",
+                        "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
                       }}
                     >
                       {product.inStock ? "Add to Cart" : "Unavailable"}
@@ -504,9 +519,10 @@ export default function AccessoriesPage() {
               </Grid>
             ))}
           </Grid>
+        )}
 
-          {/* Empty State */}
-          {filteredProducts.length === 0 && (
+        {/* Empty State */}
+        {!loading && filteredProducts.length === 0 && (
             <Paper
               sx={{
                 p: 6,
@@ -531,7 +547,7 @@ export default function AccessoriesPage() {
                   variant="contained"
                   onClick={() => setIsAddModalOpen(true)}
                   startIcon={<AddIcon />}
-                  sx={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)" }}
+                  sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
                 >
                   Add New Accessory
                 </Button>
@@ -543,12 +559,12 @@ export default function AccessoriesPage() {
 
       {/* Selling Price / Add to Cart Dialog */}
       <Dialog open={Boolean(selectedAccessory)} onClose={() => setSelectedAccessory(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800, color: "#1e40af", borderBottom: "1px solid #e2e8f0" }}>
+        <DialogTitle sx={{ fontWeight: 800, color: "#7c3aed", borderBottom: "1px solid #e2e8f0" }}>
           Confirm Selling Price in LKR
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ p: 2, backgroundColor: "#eff6ff", borderRadius: 2, mb: 3, border: "1px solid #bfdbfe" }}>
-            <Typography variant="caption" sx={{ color: "#1e40af", fontWeight: 700, textTransform: "uppercase" }}>
+          <Box sx={{ p: 2, backgroundColor: "#f5f3ff", borderRadius: 2, mb: 3, border: "1px solid #ddd6fe" }}>
+            <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, textTransform: "uppercase" }}>
               {selectedAccessory?.brand}
             </Typography>
             <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -558,7 +574,7 @@ export default function AccessoriesPage() {
               <Chip
                 label={selectedAccessory.specifications}
                 size="small"
-                sx={{ mt: 0.5, backgroundColor: "#ffffff", color: "#1e40af", fontWeight: 600, fontSize: "0.75rem" }}
+                sx={{ mt: 0.5, backgroundColor: "#ffffff", color: "#7c3aed", fontWeight: 600, fontSize: "0.75rem" }}
               />
             )}
           </Box>
@@ -585,7 +601,7 @@ export default function AccessoriesPage() {
             variant="contained"
             onClick={handleAddToCart}
             sx={{
-              background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
               fontWeight: 700,
               textTransform: "none",
               px: 3,

@@ -31,14 +31,14 @@ export function CartButton() {
       <IconButton
         onClick={toggleCart}
         sx={{
-          backgroundColor: "#eff6ff",
-          color: "#1e40af",
-          border: "1px solid #bfdbfe",
+          backgroundColor: "#f5f3ff",
+          color: "#7c3aed",
+          border: "1px solid #ddd6fe",
           p: 1,
           transition: "all 0.2s ease",
           "&:hover": {
-            backgroundColor: "#dbeafe",
-            borderColor: "#93c5fd",
+            backgroundColor: "#ede9fe",
+            borderColor: "#c4b5fd",
             transform: "scale(1.04)",
           },
         }}
@@ -109,11 +109,11 @@ export function PersistentCart() {
               width: 30,
               height: 30,
               borderRadius: 1.5,
-              backgroundColor: "#eff6ff",
+              backgroundColor: "#f5f3ff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#1e40af",
+              color: "#7c3aed",
             }}
           >
             <ShoppingCartIcon sx={{ fontSize: 16 }} />
@@ -195,8 +195,8 @@ export function PersistentCart() {
                   boxShadow: "0 1px 4px rgba(0, 0, 0, 0.03)",
                   transition: "all 0.2s ease",
                   "&:hover": {
-                    boxShadow: "0 4px 12px rgba(30, 64, 175, 0.07)",
-                    borderColor: "#93c5fd",
+                    boxShadow: "0 4px 12px rgba(124, 58, 237, 0.07)",
+                    borderColor: "#ddd6fe",
                   },
                 }}
               >
@@ -204,7 +204,7 @@ export function PersistentCart() {
                   {/* Product Info */}
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 0.75 }}>
                     <Box sx={{ flex: 1, minWidth: 0, pr: 1 }}>
-                      <Typography sx={{ fontWeight: 700, color: "#1e40af", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <Typography sx={{ fontWeight: 700, color: "#7c3aed", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         {item.brand}
                       </Typography>
                       <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.82rem", lineHeight: 1.3, mt: 0.15 }} noWrap>
@@ -217,11 +217,11 @@ export function PersistentCart() {
                           sx={{
                             mt: 0.4,
                             height: 16,
-                            backgroundColor: "#eff6ff",
-                            color: "#1e40af",
+                            backgroundColor: "#f5f3ff",
+                            color: "#7c3aed",
                             fontWeight: 700,
                             fontSize: "0.6rem",
-                            border: "1px solid #dbeafe",
+                            border: "1px solid #ddd6fe",
                             "& .MuiChip-label": { px: 0.75 },
                           }}
                         />
@@ -249,7 +249,7 @@ export function PersistentCart() {
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Box>
                       <Typography sx={{ fontSize: "0.68rem", color: "#64748b" }}>Subtotal</Typography>
-                      <Typography sx={{ fontWeight: 800, color: "#1e40af", fontSize: "0.85rem" }}>
+                      <Typography sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "0.85rem" }}>
                         Rs. {(item.price * item.quantity).toLocaleString("en-LK")}
                       </Typography>
                     </Box>
@@ -270,10 +270,10 @@ export function PersistentCart() {
                         onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
                         sx={{
                           p: "2px",
-                          color: "#1e40af",
+                          color: "#7c3aed",
                           backgroundColor: "#ffffff",
                           boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                          "&:hover": { backgroundColor: "#eff6ff" },
+                          "&:hover": { backgroundColor: "#f5f3ff" },
                         }}
                       >
                         <RemoveIcon sx={{ fontSize: "0.75rem" }} />
@@ -286,10 +286,10 @@ export function PersistentCart() {
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         sx={{
                           p: "2px",
-                          color: "#1e40af",
+                          color: "#7c3aed",
                           backgroundColor: "#ffffff",
                           boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                          "&:hover": { backgroundColor: "#eff6ff" },
+                          "&:hover": { backgroundColor: "#f5f3ff" },
                         }}
                       >
                         <AddIcon sx={{ fontSize: "0.75rem" }} />
@@ -325,7 +325,7 @@ export function PersistentCart() {
             sx={{
               px: 2,
               py: 1.25,
-              background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+              background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
               borderRadius: 1.5,
               mb: 1.25,
               color: "#ffffff",
@@ -363,15 +363,15 @@ export function PersistentCart() {
               size="small"
               endIcon={<ArrowForwardIcon sx={{ fontSize: "0.9rem" }} />}
               sx={{
-                background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                 fontWeight: 700,
                 py: 0.9,
                 fontSize: "0.82rem",
                 textTransform: "none",
                 borderRadius: 1.5,
-                boxShadow: "0 3px 10px rgba(30, 64, 175, 0.25)",
+                boxShadow: "0 3px 10px rgba(124, 58, 237, 0.25)",
                 mb: 0.75,
-                "&:hover": { background: "linear-gradient(135deg, #1e3a8a, #2563eb)" },
+                "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
               }}
             >
               Proceed to Billing

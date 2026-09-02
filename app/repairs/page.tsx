@@ -48,64 +48,31 @@ import { Repair } from "@/types/repair";
 import AddRepairModal from "@/components/repairs/AddRepairModal";
 import { useCart } from "@/context/cart-context";
 import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
+import { useRepairs } from "@/hooks/useRepairs";
+import CircularProgress from "@mui/material/CircularProgress";
 
-const initialRepairs: Repair[] = [
-  {
-    id: "REP-2026-001",
-    deviceType: "smartphone",
-    brand: "Apple",
-    model: "iPhone 15 Pro",
-    storage: "256GB",
-    repairType: "Screen Replacement (OLED)",
-    price: 48000,
-    dateCreated: new Date("2026-08-28T10:30:00"),
-    status: "in-progress",
-  },
-  {
-    id: "REP-2026-002",
-    deviceType: "smartphone",
-    brand: "Apple",
-    model: "iPhone 13",
-    storage: "128GB",
-    repairType: "Battery Replacement",
-    price: 18500,
-    dateCreated: new Date("2026-08-29T14:15:00"),
-    status: "completed",
-  },
-  {
-    id: "REP-2026-003",
-    deviceType: "laptop",
-    model: "MacBook Pro M2 14-inch",
-    repairType: "Keyboard & Trackpad Repair",
-    price: 65000,
-    dateCreated: new Date("2026-08-30T09:00:00"),
-    status: "pending",
-  },
-  {
-    id: "REP-2026-004",
-    deviceType: "smartphone",
-    brand: "Google",
-    model: "Pixel 8 Pro",
-    storage: "256GB",
-    repairType: "Camera Glass & Sensor Fix",
-    price: 32000,
-    dateCreated: new Date("2026-08-31T11:45:00"),
-    status: "in-progress",
-  },
-  {
-    id: "REP-2026-005",
-    deviceType: "laptop",
-    model: "Dell XPS 15",
-    repairType: "Battery & Thermal Paste Service",
-    price: 26000,
-    dateCreated: new Date("2026-09-01T08:20:00"),
-    status: "pending",
-  },
-];
+const toTimestamp = (date: any): number => {
+  if (!date) return 0;
+  if (date instanceof Date) return date.getTime();
+  if (typeof date.toMillis === "function") return date.toMillis();
+  if (typeof date.toDate === "function") return date.toDate().getTime();
+  return new Date(date).getTime() || 0;
+};
+
+const formatDate = (date: any): string => {
+  if (!date) return "N/A";
+  if (date instanceof Date) {
+    return date.toLocaleDateString("en-LK", { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (typeof date.toDate === "function") {
+    return date.toDate().toLocaleDateString("en-LK", { month: "short", day: "numeric", year: "numeric" });
+  }
+  return new Date(date).toLocaleDateString("en-LK", { month: "short", day: "numeric", year: "numeric" });
+};
 
 export default function RepairsPage() {
   const { addToCart } = useCart();
-  const [repairs, setRepairs] = useState<Repair[]>(initialRepairs);
+  const { repairs, loading, addRepair, updateRepair, deleteRepair } = useRepairs();
   const [openModal, setOpenModal] = useState(false);
   const [editingRepair, setEditingRepair] = useState<Repair | null>(null);
 
@@ -125,29 +92,22 @@ export default function RepairsPage() {
     return `REP-${timestamp}-${random}`.toUpperCase();
   };
 
-  const handleAddRepair = (repairData: Omit<Repair, "id" | "dateCreated">) => {
-    if (editingRepair) {
-      setRepairs(
-        repairs.map((r) =>
-          r.id === editingRepair.id
-            ? { ...repairData, id: editingRepair.id, dateCreated: editingRepair.dateCreated }
-            : r
-        )
-      );
+  const handleAddRepair = async (repairData: Omit<Repair, "id" | "dateCreated">) => {
+    if (editingRepair?.id) {
+      await updateRepair(editingRepair.id, repairData);
       setEditingRepair(null);
     } else {
-      const newRepair: Repair = {
+      await addRepair({
         ...repairData,
-        id: generateId(),
         dateCreated: new Date(),
-      };
-      setRepairs([newRepair, ...repairs]);
+      });
     }
     setOpenModal(false);
   };
 
-  const handleDeleteRepair = (id: string) => {
-    setRepairs(repairs.filter((r) => r.id !== id));
+  const handleDeleteRepair = async (id?: string) => {
+    if (!id) return;
+    await deleteRepair(id);
   };
 
   const handleEditRepair = (repair: Repair) => {
@@ -211,7 +171,7 @@ export default function RepairsPage() {
     .filter((repair) => {
       const matchesSearch =
         !searchTerm ||
-        repair.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (repair.id ? repair.id.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
         repair.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (repair.brand && repair.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
         repair.repairType.toLowerCase().includes(searchTerm.toLowerCase());
@@ -223,10 +183,10 @@ export default function RepairsPage() {
     })
     .sort((a, b) => {
       if (sortBy === "newest") {
-        return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime();
+        return toTimestamp(b.dateCreated) - toTimestamp(a.dateCreated);
       }
       if (sortBy === "oldest") {
-        return new Date(a.dateCreated).getTime() - new Date(b.dateCreated).getTime();
+        return toTimestamp(a.dateCreated) - toTimestamp(b.dateCreated);
       }
       if (sortBy === "price-high") {
         return b.price - a.price;
@@ -250,23 +210,33 @@ export default function RepairsPage() {
         position="sticky"
         sx={{
           backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)",
+          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
         }}
       >
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: "#1e40af", display: "flex", alignItems: "center", gap: 1 }}>
-            <BuildCircleIcon sx={{ color: "#1e40af" }} />
-            Repairs Management
-          </Typography>
+        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ height: 32, display: "flex", alignItems: "center" }}>
+              <img
+                src="/Images/i Dreams.png"
+                alt="iDreams Logo"
+                style={{ height: "100%", objectFit: "contain" }}
+              />
+            </Box>
+            <Divider orientation="vertical" flexItem sx={{ height: 18, my: "auto" }} />
+            <Typography variant="h6" component="div" sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 0.75 }}>
+              <BuildCircleIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
+              Repairs Management
+            </Typography>
+          </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             <Chip
               label={`${repairs.length} Total Tickets`}
               size="small"
               sx={{
-                backgroundColor: "#1e40af15",
-                color: "#1e40af",
+                backgroundColor: "#f5f3ff",
+                color: "#7c3aed",
                 fontWeight: 700,
-                border: "1px solid #1e40af30",
+                border: "1px solid #ddd6fe",
               }}
             />
             <CartButton />
@@ -299,7 +269,7 @@ export default function RepairsPage() {
             >
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: 1 }}>
-                  <FilterAltIcon sx={{ color: "#1e40af", fontSize: 22 }} />
+                  <FilterAltIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
                   Filter & Search Repair Tickets
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
@@ -316,16 +286,16 @@ export default function RepairsPage() {
                   setOpenModal(true);
                 }}
                 sx={{
-                  background: "linear-gradient(135deg, #1e40af, #1e3a8a)",
+                  background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                   fontWeight: 700,
                   px: 2.5,
                   py: 1.2,
                   borderRadius: 2,
                   textTransform: "none",
                   fontSize: "0.95rem",
-                  boxShadow: "0 4px 12px rgba(30, 64, 175, 0.25)",
+                  boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
                   "&:hover": {
-                    background: "linear-gradient(135deg, #1e3a8a, #172554)",
+                    background: "linear-gradient(135deg, #6d28d9, #c2410c)",
                   },
                 }}
               >
@@ -341,10 +311,10 @@ export default function RepairsPage() {
                 onClick={() => setStatusFilter("all")}
                 sx={{
                   fontWeight: 700,
-                  backgroundColor: statusFilter === "all" ? "#1e40af" : "#f1f5f9",
+                  backgroundColor: statusFilter === "all" ? "#7c3aed" : "#f1f5f9",
                   color: statusFilter === "all" ? "#ffffff" : "#475569",
                   "&:hover": {
-                    backgroundColor: statusFilter === "all" ? "#1e3a8a" : "#e2e8f0",
+                    backgroundColor: statusFilter === "all" ? "#6d28d9" : "#e2e8f0",
                   },
                 }}
               />
@@ -432,7 +402,7 @@ export default function RepairsPage() {
                     <MenuItem value="all">All Devices</MenuItem>
                     <MenuItem value="smartphone">
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <SmartphoneIcon sx={{ fontSize: 18, color: "#1e40af" }} /> Smartphone
+                        <SmartphoneIcon sx={{ fontSize: 18, color: "#7c3aed" }} /> Smartphone
                       </Box>
                     </MenuItem>
                     <MenuItem value="laptop">
@@ -522,8 +492,15 @@ export default function RepairsPage() {
             </Typography>
           </Box>
 
+          {/* Loading Spinner */}
+          {loading && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 10 }}>
+              <CircularProgress sx={{ color: "#7c3aed" }} />
+            </Box>
+          )}
+
           {/* Table of Repairs */}
-          {filteredRepairs.length === 0 ? (
+          {!loading && filteredRepairs.length === 0 ? (
             <Paper
               sx={{
                 p: 6,
@@ -580,7 +557,7 @@ export default function RepairsPage() {
                         transition: "background-color 0.15s ease",
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 700, color: "#1e40af", fontFamily: "monospace", fontSize: "0.85rem" }}>
+                      <TableCell sx={{ fontWeight: 700, color: "#7c3aed", fontFamily: "monospace", fontSize: "0.85rem" }}>
                         {repair.id}
                       </TableCell>
                       <TableCell>
@@ -612,11 +589,7 @@ export default function RepairsPage() {
                         />
                       </TableCell>
                       <TableCell sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                        {new Date(repair.dateCreated).toLocaleDateString("en-LK", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatDate(repair.dateCreated)}
                       </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} sx={{ justifyContent: "center" }}>
@@ -626,17 +599,17 @@ export default function RepairsPage() {
                             startIcon={<AddShoppingCartIcon sx={{ fontSize: 15 }} />}
                             onClick={() => handleOpenCartDialog(repair)}
                             sx={{
-                              background: "linear-gradient(135deg, #1e40af, #1e3a8a)",
+                              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                               fontWeight: 700,
                               textTransform: "none",
                               fontSize: "0.75rem",
                               py: 0.35,
                               px: 1.25,
                               borderRadius: 1.5,
-                              boxShadow: "0 2px 6px rgba(30, 64, 175, 0.2)",
+                              boxShadow: "0 2px 6px rgba(124, 58, 237, 0.2)",
                               whiteSpace: "nowrap",
                               "&:hover": {
-                                background: "linear-gradient(135deg, #1e3a8a, #172554)",
+                                background: "linear-gradient(135deg, #6d28d9, #c2410c)",
                               },
                             }}
                           >
@@ -704,8 +677,8 @@ export default function RepairsPage() {
               },
             }}
           >
-            <DialogTitle sx={{ fontWeight: 800, color: "#1e40af", display: "flex", alignItems: "center", gap: 1 }}>
-              <AddShoppingCartIcon sx={{ color: "#1e40af" }} />
+            <DialogTitle sx={{ fontWeight: 800, color: "#7c3aed", display: "flex", alignItems: "center", gap: 1 }}>
+              <AddShoppingCartIcon sx={{ color: "#7c3aed" }} />
               Add Repair Ticket to Cart
             </DialogTitle>
             <DialogContent dividers sx={{ py: 2.5 }}>
@@ -714,12 +687,12 @@ export default function RepairsPage() {
                   <Box
                     sx={{
                       p: 2,
-                      backgroundColor: "#f8fafc",
+                      backgroundColor: "#f5f3ff",
                       borderRadius: 2,
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid #ddd6fe",
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: "#1e40af", fontWeight: 700, fontFamily: "monospace" }}>
+                    <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, fontFamily: "monospace" }}>
                       {selectedRepairForCart.id}
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b", fontSize: "1.05rem", mt: 0.25 }}>
@@ -748,7 +721,7 @@ export default function RepairsPage() {
                           fontWeight: 700,
                           fontSize: "1.1rem",
                           "&.Mui-focused fieldset": {
-                            borderColor: "#1e40af",
+                            borderColor: "#7c3aed",
                           },
                         },
                       }}
@@ -770,13 +743,13 @@ export default function RepairsPage() {
                 disabled={!repairCartPrice || Number(repairCartPrice) <= 0}
                 startIcon={<AddShoppingCartIcon />}
                 sx={{
-                  background: "linear-gradient(135deg, #1e40af, #1e3a8a)",
+                  background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                   fontWeight: 700,
                   textTransform: "none",
                   px: 3,
                   borderRadius: 1.5,
                   "&:hover": {
-                    background: "linear-gradient(135deg, #1e3a8a, #172554)",
+                    background: "linear-gradient(135deg, #6d28d9, #c2410c)",
                   },
                 }}
               >

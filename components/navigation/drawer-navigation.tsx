@@ -27,6 +27,10 @@ import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import Tooltip from "@mui/material/Tooltip";
+import { useAuth } from "@/context/auth-context";
+
 const drawerWidth = 270;
 
 interface NavItem {
@@ -67,10 +71,16 @@ const navSections: NavSection[] = [
 export function NavigationDrawer({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  // Hide drawer on authentication pages
+  if (pathname === "/signin" || pathname === "/signup") {
+    return <>{children}</>;
+  }
 
   const isRelevantPage =
     pathname === "/" ||
@@ -82,6 +92,15 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
   if (!isRelevantPage) {
     return <>{children}</>;
   }
+
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "SK";
 
   const drawerContent = (
     <Box
@@ -102,51 +121,19 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
           borderBottom: "1px solid #f1f5f9",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-          <Box
-            sx={{
-              width: 42,
-              height: 42,
-              borderRadius: 1,
-              background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 6px 16px rgba(30, 64, 175, 0.25)",
-              color: "#ffffff",
+        <Box sx={{ mb: 1.5 }}>
+          <img
+            src="/Images/i Dreams.png"
+            alt="iDreams Logo"
+            style={{
+              height: 38,
+              maxWidth: "100%",
+              objectFit: "contain",
             }}
-          >
-            <StorefrontRoundedIcon sx={{ fontSize: 24 }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 800,
-                fontSize: "1.2rem",
-                letterSpacing: "-0.02em",
-                color: "#0f172a",
-                lineHeight: 1.15,
-              }}
-            >
-              iDreams
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.68rem",
-                color: "#1e40af",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              Retail & POS Suite
-            </Typography>
-          </Box>
+          />
         </Box>
 
-        {/* Live Status indicator */}
+        {/* Shopkeeper Status indicator */}
         <Box
           sx={{
             display: "inline-flex",
@@ -154,10 +141,9 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             gap: 0.75,
             px: 1.25,
             py: 0.4,
-            borderRadius: 10,
-            backgroundColor: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            mt: 0.5,
+            borderRadius: 5,
+            backgroundColor: "#f5f3ff",
+            border: "1px solid #ddd6fe",
           }}
         >
           <Box
@@ -165,148 +151,141 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              backgroundColor: "#10b981",
-              boxShadow: "0 0 0 2px rgba(16, 185, 129, 0.2)",
+              backgroundColor: "#7c3aed",
+              boxShadow: "0 0 0 2px rgba(124, 58, 237, 0.2)",
             }}
           />
           <Typography
             variant="caption"
             sx={{
-              fontSize: "0.7rem",
-              fontWeight: 700,
-              color: "#065f46",
+              fontWeight: 800,
+              fontSize: "0.68rem",
+              color: "#7c3aed",
               letterSpacing: "0.02em",
             }}
           >
-            Store Terminal Online
+            Role: Shopkeeper
           </Typography>
         </Box>
       </Box>
 
-      {/* Navigation Sections */}
+      {/* Navigation Links */}
       <Box
         sx={{
           flex: 1,
           overflowY: "auto",
-          px: 1.5,
-          py: 2,
-          "&::-webkit-scrollbar": {
-            width: "4px",
-          },
+          p: 1.5,
+          "&::-webkit-scrollbar": { width: 4 },
           "&::-webkit-scrollbar-thumb": {
             backgroundColor: "#e2e8f0",
-            borderRadius: "2px",
+            borderRadius: 2,
           },
         }}
       >
-        {navSections.map((section, sIdx) => (
-          <Box key={section.title} sx={{ mb: sIdx !== navSections.length - 1 ? 2.5 : 1 }}>
+        {navSections.map((section, idx) => (
+          <Box key={section.title} sx={{ mb: 2 }}>
             <Typography
               variant="caption"
               sx={{
                 px: 1.5,
                 mb: 0.75,
                 display: "block",
-                fontSize: "0.68rem",
                 fontWeight: 800,
+                fontSize: "0.65rem",
+                letterSpacing: "0.1em",
                 color: "#94a3b8",
-                letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
             >
               {section.title}
             </Typography>
-
-            <List disablePadding>
+            <List disablePadding sx={{ display: "grid", gap: 0.5 }}>
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
-
                 return (
-                  <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-                    <ListItemButton
+                  <ListItemButton
+                    key={item.href}
+                    component={Link}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    sx={{
+                      borderRadius: 1.5,
+                      py: 1,
+                      px: 1.5,
+                      transition: "all 0.18s ease-in-out",
+                      backgroundColor: isActive ? "#f5f3ff" : "transparent",
+                      color: isActive ? "#7c3aed" : "#475569",
+                      fontWeight: isActive ? 800 : 600,
+                      "&:hover": {
+                        backgroundColor: isActive ? "#f5f3ff" : "#f8fafc",
+                        color: "#7c3aed",
+                        transform: "translateX(2px)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon
                       sx={{
-                        borderRadius: 2,
-                        mb: 0.5,
-                        px: 1.5,
-                        py: 1.1,
-                        position: "relative",
-                        backgroundColor: isActive ? "rgba(30, 64, 175, 0.08)" : "transparent",
-                        border: isActive ? "1px solid rgba(30, 64, 175, 0.18)" : "1px solid transparent",
-                        transition: "all 0.15s ease-in-out",
-                        "&:hover": {
-                          backgroundColor: isActive ? "rgba(30, 64, 175, 0.12)" : "#f8fafc",
-                          transform: "translateX(2px)",
-                        },
+                        minWidth: 32,
+                        color: isActive ? "#7c3aed" : "#64748b",
                       }}
                     >
-                      {/* Active indicator bar
-                      {isActive && (
-                        <Box
+                      <Icon sx={{ fontSize: 20 }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Typography
                           sx={{
-                            position: "absolute",
-                            left: 0,
-                            top: "20%",
-                            bottom: "20%",
-                            width: 3.5,
-                            borderRadius: "50px 0 0 50px",
-                            backgroundColor: "#1e40af",
+                            fontSize: "0.85rem",
+                            fontWeight: isActive ? 800 : 600,
+                            color: isActive ? "#7c3aed" : "inherit",
                           }}
-                        />
-                      )} */}
-
-                      <ListItemIcon
+                        >
+                          {item.label}
+                        </Typography>
+                      }
+                    />
+                    {item.badge && (
+                      <Chip
+                        label={item.badge}
+                        size="small"
                         sx={{
-                          minWidth: 36,
-                          color: isActive ? "#1e40af" : "#64748b",
-                        }}
-                      >
-                        <Icon sx={{ fontSize: 20 }} />
-                      </ListItemIcon>
-
-                      <ListItemText
-                        primary={item.label}
-                        sx={{
-                          my: 0,
-                          "& .MuiListItemText-primary": {
-                            fontWeight: isActive ? 750 : 600,
-                            color: isActive ? "#1e40af" : "#334155",
-                            fontSize: "0.9rem",
-                            letterSpacing: "-0.01em",
-                          },
+                          height: 18,
+                          fontSize: "0.65rem",
+                          fontWeight: 800,
+                          backgroundColor: isActive ? "#7c3aed" : "#f1f5f9",
+                          color: isActive ? "#ffffff" : "#64748b",
                         }}
                       />
-
-                      {isActive && (
-                        <ChevronRightRoundedIcon
-                          sx={{
-                            fontSize: 16,
-                            color: "#1e40af",
-                            opacity: 0.8,
-                          }}
-                        />
-                      )}
-                    </ListItemButton>
-                  </Link>
+                    )}
+                    {isActive && (
+                      <ChevronRightRoundedIcon sx={{ fontSize: 16, color: "#7c3aed", ml: 0.5 }} />
+                    )}
+                  </ListItemButton>
                 );
               })}
             </List>
+            {idx < navSections.length - 1 && <Divider sx={{ my: 1.5, borderColor: "#f1f5f9" }} />}
           </Box>
         ))}
       </Box>
 
-      <Divider sx={{ borderColor: "#f1f5f9" }} />
-
-      {/* Footer Profile / Branch Box */}
-      <Box sx={{ p: 2, backgroundColor: "#fafafa" }}>
+      {/* Footer Profile & Logout */}
+      <Box
+        sx={{
+          p: 1.75,
+          borderTop: "1px solid #f1f5f9",
+          backgroundColor: "#fafbfd",
+        }}
+      >
         <Box
           sx={{
-            p: 1.5,
+            display: "flex",
+            alignItems: "center",
+            p: 1.25,
             borderRadius: 2,
             backgroundColor: "#ffffff",
             border: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
             gap: 1.25,
             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
           }}
@@ -315,19 +294,19 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             sx={{
               width: 34,
               height: 34,
-              fontSize: "0.85rem",
-              fontWeight: 700,
-              background: "linear-gradient(135deg, #1e40af 0%, #4338ca 100%)",
+              fontSize: "0.8rem",
+              fontWeight: 800,
+              background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
               color: "#ffffff",
             }}
           >
-            ID
+            {initials}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="body2"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 color: "#0f172a",
                 fontSize: "0.82rem",
                 lineHeight: 1.2,
@@ -336,31 +315,36 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
                 textOverflow: "ellipsis",
               }}
             >
-              Main Store POS
+              {user?.name || "Shopkeeper"}
             </Typography>
             <Typography
               variant="caption"
               sx={{
                 color: "#64748b",
-                fontSize: "0.72rem",
+                fontSize: "0.7rem",
                 display: "block",
                 lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              Colombo Branch
+              {user?.shopName || "Main Branch"}
             </Typography>
           </Box>
-          <Chip
-            label="v1.2"
-            size="small"
-            sx={{
-              height: 18,
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              backgroundColor: "#f1f5f9",
-              color: "#475569",
-            }}
-          />
+          <Tooltip title="Sign Out">
+            <IconButton
+              size="small"
+              onClick={signOut}
+              sx={{
+                color: "#94a3b8",
+                "&:hover": { color: "#ef4444", backgroundColor: "#fef2f2" },
+                p: 0.6,
+              }}
+            >
+              <LogoutRoundedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
     </Box>
@@ -444,7 +428,7 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
               color="inherit"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 1.5, color: "#1e40af" }}
+              sx={{ mr: 1.5, color: "#7c3aed" }}
             >
               <MenuIcon />
             </IconButton>
@@ -454,7 +438,7 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
                   width: 28,
                   height: 28,
                   borderRadius: 1.5,
-                  background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                  background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

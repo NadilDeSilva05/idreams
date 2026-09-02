@@ -6,13 +6,13 @@ import { ReactNode } from "react";
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#1e40af", // Dark blue
-      light: "#3b82f6",
-      dark: "#1e3a8a",
+      main: "#7c3aed", // Logo Royal Purple/Violet
+      light: "#9333ea",
+      dark: "#6d28d9",
       contrastText: "#ffffff",
     },
     secondary: {
-      main: "#ea580c", // Vibrant orange
+      main: "#ea580c", // Logo Sunset Orange
       light: "#f97316",
       dark: "#c2410c",
       contrastText: "#ffffff",
@@ -91,7 +91,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)",
+          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
           color: "#1e293b",
         },
       },
@@ -106,9 +106,9 @@ const theme = createTheme({
           transition: "all 0.3s ease",
         },
         contained: {
-          boxShadow: "0 4px 12px rgba(30, 64, 175, 0.25)",
+          boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
           "&:hover": {
-            boxShadow: "0 8px 24px rgba(30, 64, 175, 0.35)",
+            boxShadow: "0 8px 24px rgba(124, 58, 237, 0.35)",
             transform: "translateY(-2px)",
           },
         },
@@ -151,7 +151,7 @@ const theme = createTheme({
           "& .MuiOutlinedInput-root": {
             borderRadius: 8,
             "&:hover fieldset": {
-              borderColor: "#1e40af",
+              borderColor: "#7c3aed",
             },
           },
         },
@@ -180,11 +180,15 @@ const theme = createTheme({
   },
 });
 
+import { AuthProvider } from "@/context/auth-context";
+
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {children}
+      <AuthProvider>
+        {children}
+      </AuthProvider>
     </ThemeProvider>
   );
 }

@@ -24,9 +24,11 @@ export interface SmartphoneStorageVariant {
 }
 
 export interface GroupedSmartphone {
+  id?: string;
   brand: string;
   model: string;
   category: "flagship" | "mid-range" | "budget";
   variants: SmartphoneStorageVariant[];
+  createdAt?: any;
 }
 

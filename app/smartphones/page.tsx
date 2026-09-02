@@ -42,16 +42,16 @@ import AddIcon from "@mui/icons-material/Add";
 import BrandingWatermarkIcon from "@mui/icons-material/BrandingWatermark";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import { groupedSmartphoneProducts } from "@/data/smartphoneData";
-import { GroupedSmartphone } from "@/types/smartphone";
+import { useSmartphones, GroupedSmartphone } from "@/hooks/useSmartphones";
 import { useCart } from "@/context/cart-context";
 import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
 import AddSmartphoneModal from "@/components/smartphones/AddSmartphoneModal";
 import AddBrandModal from "@/components/smartphones/AddBrandModal";
+import CircularProgress from "@mui/material/CircularProgress";
 
 export default function SmartphonesPage() {
   const { addToCart } = useCart();
-  const [smartphones, setSmartphones] = useState<GroupedSmartphone[]>(groupedSmartphoneProducts);
+  const { smartphones, loading, addSmartphone } = useSmartphones();
   const [customBrands, setCustomBrands] = useState<string[]>([]);
   const [searchBrand, setSearchBrand] = useState("");
   const [searchModel, setSearchModel] = useState("");
@@ -131,8 +131,13 @@ export default function SmartphonesPage() {
     setEnteredPrice("");
   };
 
-  const handleAddSmartphone = (newPhone: GroupedSmartphone) => {
-    setSmartphones([newPhone, ...smartphones]);
+  const handleAddSmartphone = async (newPhone: GroupedSmartphone) => {
+    await addSmartphone({
+      brand: newPhone.brand,
+      model: newPhone.model,
+      category: newPhone.category,
+      variants: newPhone.variants,
+    });
     if (!allBrands.includes(newPhone.brand)) {
       setCustomBrands([...customBrands, newPhone.brand]);
     }
@@ -164,18 +169,28 @@ export default function SmartphonesPage() {
         position="sticky"
         sx={{
           backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)",
+          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
         }}
       >
-        <Toolbar>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, fontWeight: 800, color: "#1e40af", display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <SmartphoneIcon sx={{ color: "#1e40af" }} />
-            Smartphones Store
-          </Typography>
+        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ height: 32, display: "flex", alignItems: "center" }}>
+              <img
+                src="/Images/i Dreams.png"
+                alt="iDreams Logo"
+                style={{ height: "100%", objectFit: "contain" }}
+              />
+            </Box>
+            <Divider orientation="vertical" flexItem sx={{ height: 18, my: "auto" }} />
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 0.75 }}
+            >
+              <SmartphoneIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
+              Smartphones Store
+            </Typography>
+          </Box>
           <CartButton />
         </Toolbar>
       </AppBar>
@@ -197,7 +212,7 @@ export default function SmartphonesPage() {
             scrollButtons="auto"
             sx={{
               "& .MuiTabs-indicator": {
-                backgroundColor: "#1e40af",
+                backgroundColor: "#7c3aed",
                 height: 3.5,
               },
               "& .MuiTab-root": {
@@ -208,7 +223,7 @@ export default function SmartphonesPage() {
                 py: 1.5,
               },
               "& .Mui-selected": {
-                color: "#1e40af",
+                color: "#7c3aed",
                 fontWeight: 700,
               },
             }}
@@ -243,7 +258,7 @@ export default function SmartphonesPage() {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <FilterAltIcon sx={{ color: "#1e40af", fontSize: 20 }} />
+              <FilterAltIcon sx={{ color: "#7c3aed", fontSize: 20 }} />
               <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#1e293b" }}>
                 Filter & Search Smartphones
               </Typography>
@@ -271,10 +286,10 @@ export default function SmartphonesPage() {
                   borderRadius: 2,
                   px: 1.8,
                   py: 0.75,
-                  borderColor: "#bfdbfe",
-                  color: "#1e40af",
-                  backgroundColor: "#eff6ff",
-                  "&:hover": { borderColor: "#93c5fd", backgroundColor: "#dbeafe" },
+                  borderColor: "#ddd6fe",
+                  color: "#7c3aed",
+                  backgroundColor: "#f5f3ff",
+                  "&:hover": { borderColor: "#c4b5fd", backgroundColor: "#ede9fe" },
                 }}
               >
                 Add Brand
@@ -284,15 +299,15 @@ export default function SmartphonesPage() {
                 startIcon={<AddIcon />}
                 onClick={() => setIsAddSmartphoneModalOpen(true)}
                 sx={{
-                  background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                  background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                   fontWeight: 700,
                   fontSize: "0.82rem",
                   textTransform: "none",
                   borderRadius: 2,
                   px: 2,
                   py: 0.75,
-                  boxShadow: "0 4px 14px rgba(30, 64, 175, 0.25)",
-                  "&:hover": { background: "linear-gradient(135deg, #1e3a8a, #2563eb)" },
+                  boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
+                  "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
                 }}
               >
                 Add Smartphone
@@ -386,20 +401,28 @@ export default function SmartphonesPage() {
             <Chip
               label={`${filteredSmartphones.length} models`}
               sx={{
-                background: "linear-gradient(135deg, #1e40af15, #3b82f615)",
-                border: "1px solid #93c5fd",
-                color: "#1e40af",
+                background: "linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(234, 88, 12, 0.1))",
+                border: "1px solid #ddd6fe",
+                color: "#7c3aed",
                 fontWeight: 700,
               }}
             />
           </Box>
         </Box>
 
+        {/* Loading Spinner */}
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 10 }}>
+            <CircularProgress sx={{ color: "#7c3aed" }} />
+          </Box>
+        )}
+
         {/* Products Grid */}
-        <Grid container spacing={3}>
-          {filteredSmartphones.map((product, idx) => {
-            const minPrice = Math.min(...product.variants.map((v) => v.price));
-            const maxPrice = Math.max(...product.variants.map((v) => v.price));
+        {!loading && (
+          <Grid container spacing={3}>
+            {filteredSmartphones.map((product, idx) => {
+              const minPrice = Math.min(...product.variants.map((v) => v.price));
+              const maxPrice = Math.max(...product.variants.map((v) => v.price));
 
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={idx}>
@@ -414,8 +437,8 @@ export default function SmartphonesPage() {
                     backgroundColor: "#ffffff",
                     "&:hover": {
                       transform: "translateY(-6px)",
-                      boxShadow: "0 12px 24px rgba(30, 64, 175, 0.12)",
-                      borderColor: "#3b82f6",
+                      boxShadow: "0 12px 24px rgba(124, 58, 237, 0.12)",
+                      borderColor: "#7c3aed",
                     },
                   }}
                 >
@@ -426,7 +449,7 @@ export default function SmartphonesPage() {
                         sx={{
                           fontWeight: 800,
                           textTransform: "uppercase",
-                          color: "#1e40af",
+                          color: "#7c3aed",
                           letterSpacing: "0.05em",
                         }}
                       >
@@ -443,15 +466,15 @@ export default function SmartphonesPage() {
                             textTransform: "capitalize",
                             backgroundColor:
                               product.category === "flagship"
-                                ? "#fef3c7"
+                                ? "#fff7ed"
                                 : product.category === "mid-range"
-                                ? "#eff6ff"
+                                ? "#f5f3ff"
                                 : "#f1f5f9",
                             color:
                               product.category === "flagship"
-                                ? "#b45309"
+                                ? "#ea580c"
                                 : product.category === "mid-range"
-                                ? "#1e40af"
+                                ? "#7c3aed"
                                 : "#475569",
                           }}
                         />
@@ -492,7 +515,7 @@ export default function SmartphonesPage() {
                       <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
                         Starts From
                       </Typography>
-                      <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", color: "#1e40af" }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", color: "#7c3aed" }}>
                         Rs. {minPrice.toLocaleString("en-LK")}
                       </Typography>
                     </Box>
@@ -512,15 +535,15 @@ export default function SmartphonesPage() {
                       startIcon={<AddShoppingCartIcon />}
                       onClick={() => handleOpenPriceDialog(product)}
                       sx={{
-                        background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                        background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                         fontWeight: 700,
                         py: 0.9,
                         fontSize: "0.85rem",
                         textTransform: "none",
                         borderRadius: 1.5,
-                        boxShadow: "0 3px 8px rgba(30, 64, 175, 0.2)",
+                        boxShadow: "0 3px 8px rgba(124, 58, 237, 0.2)",
                         "&:hover": {
-                          background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+                          background: "linear-gradient(135deg, #6d28d9, #c2410c)",
                         },
                       }}
                     >
@@ -532,9 +555,10 @@ export default function SmartphonesPage() {
             );
           })}
         </Grid>
+      )}
 
         {/* Empty State */}
-        {filteredSmartphones.length === 0 && (
+        {!loading && filteredSmartphones.length === 0 && (
           <Paper
             sx={{
               p: 6,
@@ -559,7 +583,7 @@ export default function SmartphonesPage() {
                 variant="contained"
                 onClick={() => setIsAddSmartphoneModalOpen(true)}
                 startIcon={<AddIcon />}
-                sx={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)" }}
+                sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
               >
                 Add New Smartphone
               </Button>
@@ -583,8 +607,8 @@ export default function SmartphonesPage() {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, color: "#1e40af", pb: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid #e2e8f0" }}>
-          <SmartphoneIcon sx={{ color: "#1e40af" }} />
+        <DialogTitle sx={{ fontWeight: 800, color: "#7c3aed", pb: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid #e2e8f0" }}>
+          <SmartphoneIcon sx={{ color: "#7c3aed" }} />
           Select Storage & Selling Price
         </DialogTitle>
 
@@ -595,12 +619,12 @@ export default function SmartphonesPage() {
               <Box
                 sx={{
                   p: 2,
-                  backgroundColor: "#eff6ff",
+                  backgroundColor: "#f5f3ff",
                   borderRadius: 2,
-                  border: "1px solid #bfdbfe",
+                  border: "1px solid #ddd6fe",
                 }}
               >
-                <Typography variant="caption" sx={{ color: "#1e40af", fontWeight: 700, textTransform: "uppercase" }}>
+                <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, textTransform: "uppercase" }}>
                   {selectedModel.brand}
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b" }}>
@@ -620,10 +644,10 @@ export default function SmartphonesPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.75,
-                    "&.Mui-focused": { color: "#1e40af" },
+                    "&.Mui-focused": { color: "#7c3aed" },
                   }}
                 >
-                  <StorageIcon fontSize="small" sx={{ color: "#1e40af" }} />
+                  <StorageIcon fontSize="small" sx={{ color: "#7c3aed" }} />
                   Select Storage Capacity
                 </FormLabel>
 
@@ -646,24 +670,24 @@ export default function SmartphonesPage() {
                             alignItems: "center",
                             cursor: "pointer",
                             borderRadius: 2,
-                            borderColor: isSelected ? "#1e40af" : "#e2e8f0",
-                            backgroundColor: isSelected ? "#eff6ff" : "#ffffff",
+                            borderColor: isSelected ? "#7c3aed" : "#e2e8f0",
+                            backgroundColor: isSelected ? "#f5f3ff" : "#ffffff",
                             transition: "all 0.2s ease",
                             "&:hover": {
-                              borderColor: "#1e40af",
-                              backgroundColor: isSelected ? "#eff6ff" : "#f8fafc",
+                              borderColor: "#7c3aed",
+                              backgroundColor: isSelected ? "#f5f3ff" : "#f8fafc",
                             },
                           }}
                         >
                           <FormControlLabel
                             value={variant.storage}
-                            control={<Radio size="small" sx={{ color: "#1e40af", "&.Mui-checked": { color: "#1e40af" } }} />}
+                            control={<Radio size="small" sx={{ color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" } }} />}
                             label={
                               <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
                                 <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>
                                   {variant.storage}
                                 </Typography>
-                                <Typography sx={{ fontWeight: 700, color: "#1e40af", fontSize: "0.9rem", ml: 3 }}>
+                                <Typography sx={{ fontWeight: 700, color: "#7c3aed", fontSize: "0.9rem", ml: 3 }}>
                                   Rs. {variant.price.toLocaleString("en-LK")}
                                 </Typography>
                               </Box>
@@ -720,13 +744,13 @@ export default function SmartphonesPage() {
             disabled={!selectedStorage || !enteredPrice || Number(enteredPrice) <= 0}
             startIcon={<AddShoppingCartIcon />}
             sx={{
-              background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
               fontWeight: 700,
               textTransform: "none",
               px: 3,
               borderRadius: 1.5,
               "&:hover": {
-                background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+                background: "linear-gradient(135deg, #6d28d9, #c2410c)",
               },
             }}
           >
