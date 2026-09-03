@@ -30,7 +30,6 @@ import LocalAtmIcon from "@mui/icons-material/LocalAtm";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import ReceiptIcon from "@mui/icons-material/Receipt";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useCart } from "@/context/cart-context";
 import { useAuth } from "@/context/auth-context";
 import { Bill, BillItem, BillStatus } from "./InvoiceReceiptView";
@@ -55,10 +54,17 @@ export default function PosCheckoutTerminal({
   const [lineItems, setLineItems] = useState<BillItem[]>(() => {
     if (cartItems.length > 0) {
       return cartItems.map((item) => ({
-        name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}`,
+        name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
         qty: item.quantity,
         price: item.price,
         warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
+        smartphoneId: item.smartphoneId,
+        stockItemId: item.stockItemId,
+        imei: item.imei,
+        type: item.type,
+        brand: item.brand,
+        model: item.model,
+        storage: item.storage,
       }));
     }
     return [];
@@ -82,10 +88,17 @@ export default function PosCheckoutTerminal({
   const handleLoadFromCart = () => {
     if (cartItems.length === 0) return;
     const convertedItems: BillItem[] = cartItems.map((item) => ({
-      name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}`,
+      name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
       qty: item.quantity,
       price: item.price,
       warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
+      smartphoneId: item.smartphoneId,
+      stockItemId: item.stockItemId,
+      imei: item.imei,
+      type: item.type,
+      brand: item.brand,
+      model: item.model,
+      storage: item.storage,
     }));
     setLineItems(convertedItems);
   };
@@ -566,35 +579,14 @@ export default function PosCheckoutTerminal({
                 fullWidth
                 variant="contained"
                 size="large"
-                startIcon={<CheckCircleIcon />}
-                disabled={lineItems.length === 0}
-                onClick={() => handleCompleteSale(false)}
-                sx={{
-                  background: "linear-gradient(135deg, #059669, #10b981)",
-                  fontWeight: 800,
-                  py: 1,
-                  fontSize: "0.9rem",
-                  textTransform: "none",
-                  borderRadius: 1.5,
-                  boxShadow: "0 4px 14px rgba(5, 150, 105, 0.25)",
-                  "&:hover": { background: "linear-gradient(135deg, #047857, #059669)" },
-                }}
-              >
-                Complete Sale & Save
-              </Button>
-
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
                 startIcon={<ReceiptIcon />}
                 disabled={lineItems.length === 0}
                 onClick={() => handleCompleteSale(true)}
                 sx={{
                   background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                   fontWeight: 800,
-                  py: 1,
-                  fontSize: "0.9rem",
+                  py: 1.25,
+                  fontSize: "0.95rem",
                   textTransform: "none",
                   borderRadius: 1.5,
                   boxShadow: "0 4px 14px rgba(124, 58, 237, 0.25)",

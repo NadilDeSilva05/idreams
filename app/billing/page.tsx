@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   AppBar,
   Box,
@@ -30,6 +30,10 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogActions,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -42,12 +46,14 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import PrintIcon from "@mui/icons-material/Print";
+import UndoIcon from "@mui/icons-material/Undo";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { CartButton, PersistentCart } from "@/components/cart/persistent-cart";
 import InvoiceReceiptView, { Bill } from "@/components/billing/InvoiceReceiptView";
 import PosCheckoutTerminal from "@/components/billing/PosCheckoutTerminal";
 import PaymentStatusModal from "@/components/billing/PaymentStatusModal";
 import { useBills } from "@/hooks/useBills";
-import CircularProgress from "@mui/material/CircularProgress";
+import { useSmartphones } from "@/hooks/useSmartphones";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-LK", {
@@ -59,7 +65,13 @@ const formatCurrency = (value: number) =>
 export default function BillingPage() {
   const [activeSection, setActiveSection] = useState<"terminal" | "invoices">("terminal");
   const { bills, loading, addBill, updateBill, deleteBill } = useBills();
+  const { smartphones, markStockSold, markStockAvailable } = useSmartphones();
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
+
+  // PRINT PORTAL state — we render a standalone DOM copy of the invoice outside of
+  // any Dialog/position:fixed container so it flows correctly to the print engine.
+  const [printingBill, setPrintingBill] = useState<Bill | null>(null);
+  const [printingViewMode, setPrintingViewMode] = useState<"standard" | "thermal">("standard");
 
   // Filters State for Invoices Tab
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,7 +82,46 @@ export default function BillingPage() {
   // Payment Status Edit Modal
   const [editingBillForStatus, setEditingBillForStatus] = useState<Bill | null>(null);
 
+  // Undo Bill state
+  const [undoBillTarget, setUndoBillTarget] = useState<Bill | null>(null);
+  const [undoReason, setUndoReason] = useState("");
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info" | "warning";
+  }>({ open: false, message: "", severity: "success" });
+
   const nextInvoiceNumber = `INV-${new Date().getFullYear()}-${String(bills.length + 1).padStart(3, "0")}`;
+
+  // Trigger a print via the standalone portal.
+  // flow: set state to render portal copy in DOM → wait a tick so React paints → window.print()
+  const triggerPrint = (bill: Bill, viewMode: "standard" | "thermal" = "standard") => {
+    setPrintingBill(bill);
+    setPrintingViewMode(viewMode);
+    setViewingBill(null);
+    if (typeof window !== "undefined") {
+      document.body.classList.add("printing-via-portal");
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.print();
+        }, 250);
+      });
+    }
+  };
+
+  // Clean up portal DOM copy after print dialog closes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onAfterPrint = () => {
+      setPrintingBill(null);
+      document.body.classList.remove("printing-via-portal");
+    };
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, []);
 
   // Summary Metrics
   const totals = useMemo(() => {
@@ -108,16 +159,132 @@ export default function BillingPage() {
   }, [bills, searchTerm, statusFilter, methodFilter, sortBy]);
 
   const handleSaveBill = async (newBill: Bill, autoPrint = false) => {
-    await addBill(newBill);
-    setActiveSection("invoices");
+    try {
+      setIsSaving(true);
 
-    if (autoPrint) {
-      setViewingBill(newBill);
-      if (typeof window !== "undefined") {
-        setTimeout(() => {
-          window.print();
-        }, 300);
+      // 1. For every line item that carries smartphoneId + stockItemId:
+      //    mark the matching physical stock unit Sold in Firestore BEFORE
+      //    committing the bill (best-effort — if any fail, we still persist the bill
+      //    and surface a warning toast so staff can reconcile manually).
+      let stockErrors = 0;
+      for (const item of newBill.items) {
+        if (!item.smartphoneId || !item.stockItemId) continue;
+        try {
+          const phone = smartphones.find((p) => p.id === item.smartphoneId);
+          const stock = phone?.stocks?.find((s) => s.id === item.stockItemId);
+          if (stock && stock.status !== "Sold") {
+            await markStockSold(item.smartphoneId, item.stockItemId);
+          } else if (!stock) {
+            stockErrors += 1;
+          }
+        } catch (err) {
+          console.warn("Failed to mark stock sold:", item.stockItemId, err);
+          stockErrors += 1;
+        }
       }
+
+      // 2. Save the bill to Firestore
+      await addBill(newBill);
+      setActiveSection("invoices");
+
+      if (stockErrors > 0) {
+        setToast({
+          open: true,
+          severity: "warning",
+          message: `Bill saved. ${stockErrors} stock unit(s) could not be located — please verify inventory manually.`,
+        });
+      } else {
+        setToast({
+          open: true,
+          severity: "success",
+          message: `Bill ${newBill.id} saved successfully. Stock inventory has been updated.`,
+        });
+      }
+
+      // 3. Auto-print the thermal receipt
+      if (autoPrint) {
+        // Build a fresh bill object using the same nextInvoiceNumber so preview matches
+        triggerPrint(newBill, "thermal");
+      }
+    } catch (err) {
+      console.error("Save bill error:", err);
+      setToast({
+        open: true,
+        severity: "error",
+        message: "Failed to save bill. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleOpenUndoBill = (bill: Bill) => {
+    if (bill.status === "Undone") return;
+    setUndoBillTarget(bill);
+    setUndoReason("");
+  };
+
+  const handleConfirmUndoBill = async () => {
+    const bill = undoBillTarget;
+    if (!bill?.firestoreId) return;
+
+    try {
+      setIsUndoing(true);
+
+      // 1. Restore stock items: for every smartphone line item that has a stockItemId,
+      //    mark its stock unit Available again (increase available stock).
+      let stockErrors = 0;
+      for (const item of bill.items) {
+        if (!item.smartphoneId || !item.stockItemId) continue;
+        try {
+          const phone = smartphones.find((p) => p.id === item.smartphoneId);
+          const stock = phone?.stocks?.find((s) => s.id === item.stockItemId);
+          if (stock) {
+            await markStockAvailable(item.smartphoneId, item.stockItemId);
+          } else {
+            stockErrors += 1;
+          }
+        } catch (err) {
+          console.warn("Failed to mark stock available:", item.stockItemId, err);
+          stockErrors += 1;
+        }
+      }
+
+      // 2. Mark bill status as Undone, stamp timestamps & reason
+      await updateBill(bill.firestoreId, {
+        status: "Undone",
+        undoneAt: new Date().toISOString(),
+        undoReason: undoReason.trim() || "Undone by cashier",
+      });
+
+      if (viewingBill?.id === bill.id || viewingBill?.firestoreId === bill.firestoreId) {
+        setViewingBill(null);
+      }
+
+      if (stockErrors > 0) {
+        setToast({
+          open: true,
+          severity: "warning",
+          message: `Bill ${bill.id} marked Undone. ${stockErrors} stock unit(s) could not be located — please verify inventory manually.`,
+        });
+      } else {
+        setToast({
+          open: true,
+          severity: "success",
+          message: `Bill ${bill.id} has been undone. Stock inventory has been restored.`,
+        });
+      }
+    } catch (err) {
+      console.error("Undo bill error:", err);
+      setToast({
+        open: true,
+        severity: "error",
+        message: "Failed to undo bill. Please try again.",
+      });
+    } finally {
+      setIsUndoing(false);
+      setUndoBillTarget(null);
+      setUndoReason("");
     }
   };
 
@@ -370,6 +537,7 @@ export default function BillingPage() {
                       <MenuItem value="Paid">Paid</MenuItem>
                       <MenuItem value="Pending">Pending</MenuItem>
                       <MenuItem value="Partial">Partial</MenuItem>
+                      <MenuItem value="Undone">Undone / Reversed</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -482,13 +650,15 @@ export default function BillingPage() {
                                 ? "warning"
                                 : bill.status === "Partial"
                                 ? "info"
+                                : bill.status === "Undone"
+                                ? "error"
                                 : "default"
                             }
                             sx={{ height: 24, fontSize: "0.72rem", fontWeight: 800, px: 0.5 }}
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ py: 1.5 }}>
-                          <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75 }}>
+                          <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
                             <Tooltip title="View & Print Invoice">
                               <IconButton
                                 size="small"
@@ -499,8 +669,35 @@ export default function BillingPage() {
                                   "&:hover": { backgroundColor: "#ede9fe" },
                                 }}
                               >
-                                <VisibilityIcon sx={{ fontSize: 18 }} />
+                                <VisibilityIcon sx={{ fontSize: 17 }} />
                               </IconButton>
+                            </Tooltip>
+                            <Tooltip
+                              title={
+                                bill.status === "Undone"
+                                  ? "Bill has already been undone"
+                                  : bill.status === "Paid" || bill.status === "Partial" || bill.status === "Pending"
+                                  ? `Undo Bill ${bill.id} and restore stock to inventory`
+                                  : "Cannot undo Draft bills"
+                              }
+                            >
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleOpenUndoBill(bill)}
+                                  disabled={bill.status === "Undone" || bill.status === "Draft"}
+                                  sx={{
+                                    color: bill.status === "Undone" || bill.status === "Draft" ? "#cbd5e1" : "#f59e0b",
+                                    backgroundColor: bill.status === "Undone" || bill.status === "Draft" ? "#f8fafc" : "#fffbeb",
+                                    "&:hover": {
+                                      backgroundColor:
+                                        bill.status === "Undone" || bill.status === "Draft" ? "#f8fafc" : "#fef3c7",
+                                    },
+                                  }}
+                                >
+                                  <UndoIcon sx={{ fontSize: 17 }} />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                             <Tooltip title="Update Status">
                               <IconButton
@@ -512,7 +709,7 @@ export default function BillingPage() {
                                   "&:hover": { backgroundColor: "#d1fae5" },
                                 }}
                               >
-                                <EditIcon sx={{ fontSize: 18 }} />
+                                <EditIcon sx={{ fontSize: 17 }} />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Delete">
@@ -525,7 +722,7 @@ export default function BillingPage() {
                                   "&:hover": { backgroundColor: "#fee2e2" },
                                 }}
                               >
-                                <DeleteIcon sx={{ fontSize: 18 }} />
+                                <DeleteIcon sx={{ fontSize: 17 }} />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -587,6 +784,7 @@ export default function BillingPage() {
           {viewingBill && (
             <InvoiceReceiptView
               bill={viewingBill}
+              onPrint={(mode) => triggerPrint(viewingBill!, mode)}
               onUpdateStatus={(b) => setEditingBillForStatus(b)}
             />
           )}
@@ -600,6 +798,164 @@ export default function BillingPage() {
         onClose={() => setEditingBillForStatus(null)}
         onUpdate={handleUpdateBillSettlement}
       />
+
+      {/* UNDO BILL CONFIRMATION DIALOG */}
+      <Dialog
+        open={Boolean(undoBillTarget)}
+        onClose={() => !isUndoing && setUndoBillTarget(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: { sx: { borderRadius: 3, overflow: "hidden" } },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #f59e0b, #dc2626)",
+            color: "#ffffff",
+            py: 2,
+            px: 3,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+          }}
+        >
+          <WarningAmberIcon />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Undo Invoice {undoBillTarget?.id}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+              This action reverses the sale and restores all stock units to inventory.
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ mb: 2.5, p: 2, backgroundColor: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 2 }}>
+            <Typography variant="body2" sx={{ color: "#9a3412", fontWeight: 600, lineHeight: 1.6 }}>
+              Reversing this bill will:
+            </Typography>
+            <Box component="ul" sx={{ m: 0, mt: 0.75, pl: 2.5 }}>
+              <li>
+                <Typography variant="body2" sx={{ color: "#7c2d12", fontSize: "0.85rem", fontWeight: 500 }}>
+                  Mark the bill status as <strong>Undone</strong> (non-destructive, keeps audit trail)
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body2" sx={{ color: "#7c2d12", fontSize: "0.85rem", fontWeight: 500 }}>
+                  Restore every smartphone stock unit (IMEI) in this bill back to <strong>Available</strong>
+                </Typography>
+              </li>
+              <li>
+                <Typography variant="body2" sx={{ color: "#7c2d12", fontSize: "0.85rem", fontWeight: 500 }}>
+                  Record a timestamp and the reason for undoing
+                </Typography>
+              </li>
+            </Box>
+          </Box>
+
+          {undoBillTarget && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Bill Summary:
+              </Typography>
+              <Box sx={{ mt: 0.75, p: 2, backgroundColor: "#f8fafc", borderRadius: 2, border: "1px solid #e2e8f0" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "#64748b" }}>Customer:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: "#0f172a" }}>{undoBillTarget.customer}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "#64748b" }}>Date:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a" }}>{undoBillTarget.date}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "#64748b" }}>Items:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a" }}>{undoBillTarget.itemCount}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2" sx={{ color: "#64748b" }}>Total:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 800, color: "#7c3aed" }}>{formatCurrency(undoBillTarget.total)}</Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          <TextField
+            fullWidth
+            label="Reason for Undoing (recommended)"
+            placeholder="e.g., Wrong customer, returned by customer, duplicate bill"
+            value={undoReason}
+            onChange={(e) => setUndoReason(e.target.value)}
+            multiline
+            rows={3}
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": { backgroundColor: "#ffffff" },
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2.5, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", gap: 1 }}>
+          <Button
+            onClick={() => setUndoBillTarget(null)}
+            disabled={isUndoing}
+            sx={{ textTransform: "none", fontWeight: 700, color: "#64748b" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmUndoBill}
+            disabled={isUndoing}
+            startIcon={isUndoing ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : <UndoIcon />}
+            sx={{
+              background: "linear-gradient(135deg, #f59e0b, #dc2626)",
+              fontWeight: 800,
+              textTransform: "none",
+              px: 2.5,
+              boxShadow: "0 4px 14px rgba(245, 158, 11, 0.3)",
+              "&:hover": { background: "linear-gradient(135deg, #d97706, #b91c1c)" },
+            }}
+          >
+            {isUndoing ? "Processing Undo..." : "Confirm Undo & Restore Stock"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* GLOBAL TOAST NOTIFICATIONS */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={5000}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={toast.severity}
+          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          sx={{
+            width: "100%",
+            fontWeight: 600,
+            borderRadius: 2,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+          }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
+
+      {/* STANDALONE PRINT PORTAL — rendered OUTSIDE any Dialog / position:fixed
+          container so that window.print() can flow a clean page. Only painted while
+          `printingBill` is set; CSS @media print reveals it and hides everything else. */}
+      {printingBill && (
+        <div className="billing-print-portal">
+          <InvoiceReceiptView
+            bill={printingBill}
+            hideControls
+            forcedViewMode={printingViewMode}
+          />
+        </div>
+      )}
 
       <PersistentCart />
     </Box>
