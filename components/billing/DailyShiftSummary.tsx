@@ -29,6 +29,8 @@ import { Bill } from "./InvoiceReceiptView";
 
 interface DailyShiftSummaryProps {
   bills: Bill[];
+  onPrint?: () => void;
+  hidePrintButton?: boolean;
 }
 
 const formatCurrency = (value: number) =>
@@ -38,7 +40,11 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export default function DailyShiftSummary({ bills }: DailyShiftSummaryProps) {
+export default function DailyShiftSummary({
+  bills,
+  onPrint,
+  hidePrintButton = false,
+}: DailyShiftSummaryProps) {
   const [openingFloat, setOpeningFloat] = useState<number>(25000); // 25,000 LKR default opening cash in register
   const [cashierName] = useState("Sanjeewa (Cashier #01)");
 
@@ -57,7 +63,9 @@ export default function DailyShiftSummary({ bills }: DailyShiftSummaryProps) {
   const expectedCashInDrawer = openingFloat + cashSales;
 
   const handlePrintReport = () => {
-    if (typeof window !== "undefined") {
+    if (onPrint) {
+      onPrint();
+    } else if (typeof window !== "undefined") {
       window.print();
     }
   };
@@ -100,23 +108,26 @@ export default function DailyShiftSummary({ bills }: DailyShiftSummaryProps) {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<PrintIcon />}
-          onClick={handlePrintReport}
-          sx={{
-            backgroundColor: "#ffffff",
-            color: "#0f172a",
-            fontWeight: 800,
-            textTransform: "none",
-            borderRadius: 2,
-            px: 2.5,
-            py: 1,
-            "&:hover": { backgroundColor: "#f1f5f9" },
-          }}
-        >
-          Print Settlement Report
-        </Button>
+        {!hidePrintButton && (
+          <Button
+            variant="contained"
+            startIcon={<PrintIcon />}
+            onClick={handlePrintReport}
+            className="print-hidden"
+            sx={{
+              backgroundColor: "#ffffff",
+              color: "#0f172a",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: 2,
+              px: 2.5,
+              py: 1,
+              "&:hover": { backgroundColor: "#f1f5f9" },
+            }}
+          >
+            Print Settlement Report
+          </Button>
+        )}
       </Paper>
 
       {/* Metric Cards */}

@@ -15,13 +15,20 @@ import PrintIcon from "@mui/icons-material/Print";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
 import PhoneIcon from "@mui/icons-material/Phone";
 
-export type BillStatus = "Paid" | "Pending" | "Partial" | "Draft";
+export type BillStatus = "Paid" | "Pending" | "Partial" | "Draft" | "Undone";
 
 export type BillItem = {
   name: string;
   qty: number;
   price: number;
   warranty?: string;
+  smartphoneId?: string;
+  stockItemId?: string;
+  imei?: string;
+  type?: "Brand New" | "Used";
+  brand?: string;
+  model?: string;
+  storage?: string;
 };
 
 export type Bill = {
@@ -43,6 +50,8 @@ export type Bill = {
   amountPaid?: number;
   cashier: string;
   note?: string;
+  undoneAt?: string;
+  undoReason?: string;
 };
 
 const formatCurrency = (value: number) =>
@@ -54,20 +63,26 @@ const formatCurrency = (value: number) =>
 
 interface InvoiceReceiptViewProps {
   bill: Bill;
-  onPrint?: () => void;
+  onPrint?: (viewMode: "standard" | "thermal") => void;
   onUpdateStatus?: (bill: Bill) => void;
+  hideControls?: boolean;
+  forcedViewMode?: "standard" | "thermal";
 }
 
 export default function InvoiceReceiptView({
   bill,
   onPrint,
   onUpdateStatus,
+  hideControls = false,
+  forcedViewMode,
 }: InvoiceReceiptViewProps) {
   const [viewMode, setViewMode] = useState<"standard" | "thermal">("standard");
 
+  const effectiveViewMode = forcedViewMode ?? viewMode;
+
   const handlePrint = () => {
     if (onPrint) {
-      onPrint();
+      onPrint(effectiveViewMode);
     } else if (typeof window !== "undefined") {
       window.print();
     }
@@ -90,8 +105,12 @@ export default function InvoiceReceiptView({
 
   return (
     <Box>
-      {/* Header controls */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+      {/* Header controls — hidden when hideControls prop or print media */}
+      {!hideControls && (
+        <Box
+          className="print-hidden"
+          sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}
+        >
         <ButtonGroup size="small" variant="outlined">
           <Button
             variant={viewMode === "standard" ? "contained" : "outlined"}
@@ -125,6 +144,7 @@ export default function InvoiceReceiptView({
           Print
         </Button>
       </Box>
+      )}
 
       {/* STANDARD A4 INVOICE VIEW */}
       {viewMode === "standard" && (

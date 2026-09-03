@@ -31,16 +31,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const generateCartItemId = (brand: string, model: string, storage: string) => {
+  const generateCartItemId = (
+    brand: string,
+    model: string,
+    storage: string,
+    stockItemId?: string
+  ) => {
+    if (stockItemId) {
+      return `${brand}-${model}-${storage}-${stockItemId}`.replace(/\s+/g, "-").toLowerCase();
+    }
     return `${brand}-${model}-${storage}`.replace(/\s+/g, "-").toLowerCase();
   };
 
   const addToCart = (item: Omit<CartItem, "id" | "quantity">) => {
     setItems((prevItems) => {
-      const id = generateCartItemId(item.brand, item.model, item.storage);
+      const id = generateCartItemId(item.brand, item.model, item.storage, item.stockItemId);
       const existingItem = prevItems.find((i) => i.id === id);
 
-      if (existingItem) {
+      if (existingItem && !item.stockItemId) {
         return prevItems.map((i) =>
           i.id === id ? { ...i, quantity: i.quantity + 1 } : i
         );

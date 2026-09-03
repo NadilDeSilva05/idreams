@@ -2,6 +2,7 @@
 
 import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import { ReactNode } from "react";
+import { EmotionRootStyleRegistry } from "@/app/emotion-cache";
 
 const theme = createTheme({
   palette: {
@@ -184,11 +185,13 @@ import { AuthProvider } from "@/context/auth-context";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </ThemeProvider>
+    <EmotionRootStyleRegistry>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </ThemeProvider>
+    </EmotionRootStyleRegistry>
   );
 }

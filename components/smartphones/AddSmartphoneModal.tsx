@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -26,6 +26,7 @@ import SmartphoneIcon from "@mui/icons-material/Smartphone";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
 import { GroupedSmartphone, SmartphoneStorageVariant } from "@/types/smartphone";
 
 interface AddSmartphoneModalProps {
@@ -34,6 +35,7 @@ interface AddSmartphoneModalProps {
   onAdd: (smartphone: GroupedSmartphone) => void;
   existingBrands: string[];
   onOpenAddBrandModal: () => void;
+  editingSmartphone?: GroupedSmartphone | null;
 }
 
 export default function AddSmartphoneModal({
@@ -42,7 +44,10 @@ export default function AddSmartphoneModal({
   onAdd,
   existingBrands,
   onOpenAddBrandModal,
+  editingSmartphone = null,
 }: AddSmartphoneModalProps) {
+  const isEditing = Boolean(editingSmartphone);
+
   const [brand, setBrand] = useState(existingBrands[0] || "Apple");
   const [model, setModel] = useState("");
   const [category, setCategory] = useState<"flagship" | "mid-range" | "budget">("flagship");
@@ -53,14 +58,51 @@ export default function AddSmartphoneModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Load editing data into form when editing smartphone changes
+  useEffect(() => {
+    if (!open) return;
+    if (editingSmartphone) {
+      setBrand(editingSmartphone.brand);
+      setModel(editingSmartphone.model);
+      setCategory(editingSmartphone.category || "flagship");
+      setVariants(
+        editingSmartphone.variants.map((v) => ({
+          storage: v.storage,
+          price: String(v.price),
+        }))
+      );
+    } else {
+      setBrand(existingBrands[0] || "Apple");
+      setModel("");
+      setCategory("flagship");
+      setVariants([
+        { storage: "128GB", price: "220000" },
+        { storage: "256GB", price: "260000" },
+      ]);
+    }
+    setErrors({});
+  }, [editingSmartphone, open]);
+
   const handleReset = () => {
-    setBrand(existingBrands[0] || "Apple");
-    setModel("");
-    setCategory("flagship");
-    setVariants([
-      { storage: "128GB", price: "220000" },
-      { storage: "256GB", price: "260000" },
-    ]);
+    if (isEditing && editingSmartphone) {
+      setBrand(editingSmartphone.brand);
+      setModel(editingSmartphone.model);
+      setCategory(editingSmartphone.category || "flagship");
+      setVariants(
+        editingSmartphone.variants.map((v) => ({
+          storage: v.storage,
+          price: String(v.price),
+        }))
+      );
+    } else {
+      setBrand(existingBrands[0] || "Apple");
+      setModel("");
+      setCategory("flagship");
+      setVariants([
+        { storage: "128GB", price: "220000" },
+        { storage: "256GB", price: "260000" },
+      ]);
+    }
     setErrors({});
   };
 
@@ -135,7 +177,9 @@ export default function AddSmartphoneModal({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "linear-gradient(135deg, #7c3aed, #9333ea)",
+          background: isEditing
+            ? "linear-gradient(135deg, #7c3aed, #6366f1)"
+            : "linear-gradient(135deg, #7c3aed, #9333ea)",
           color: "#ffffff",
           py: 2,
           px: 3,
@@ -144,7 +188,7 @@ export default function AddSmartphoneModal({
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <SmartphoneIcon />
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Add New Smartphone
+            {isEditing ? "Edit Smartphone" : "Add New Smartphone"}
           </Typography>
         </Box>
         <IconButton onClick={handleClose} sx={{ color: "white" }} size="small">
@@ -156,7 +200,7 @@ export default function AddSmartphoneModal({
         <DialogContent sx={{ p: 3, backgroundColor: "#f8fafc" }}>
           <Grid container spacing={2.5}>
             {/* Brand Select with Add Brand quick trigger */}
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth size="small" sx={{ backgroundColor: "#ffffff" }}>
                 <InputLabel>Brand</InputLabel>
                 <Select
@@ -175,26 +219,14 @@ export default function AddSmartphoneModal({
                       {b}
                     </MenuItem>
                   ))}
-                  <Divider sx={{ my: 0.5 }} />
-                  <MenuItem value="__new_brand__" sx={{ color: "#7c3aed", fontWeight: 700 }}>
-                    + Add New Brand Catalog
-                  </MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Category Tier */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth size="small" sx={{ backgroundColor: "#ffffff" }}>
-                <InputLabel>Market Category</InputLabel>
-                <Select
-                  value={category}
-                  label="Market Category"
-                  onChange={(e) => setCategory(e.target.value as any)}
-                >
-                  <MenuItem value="flagship">Flagship Premium</MenuItem>
-                  <MenuItem value="mid-range">Mid-Range</MenuItem>
-                  <MenuItem value="budget">Budget / Entry</MenuItem>
+                  {!isEditing && (
+                    <>
+                      <Divider sx={{ my: 0.5 }} />
+                      <MenuItem value="__new_brand__" sx={{ color: "#7c3aed", fontWeight: 700 }}>
+                        + Add New Brand Catalog
+                      </MenuItem>
+                    </>
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -292,17 +324,23 @@ export default function AddSmartphoneModal({
           <Button
             type="submit"
             variant="contained"
-            startIcon={<AddCircleIcon />}
+            startIcon={isEditing ? <EditIcon /> : <AddCircleIcon />}
             sx={{
-              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+              background: isEditing
+                ? "linear-gradient(135deg, #7c3aed, #6366f1)"
+                : "linear-gradient(135deg, #7c3aed, #ea580c)",
               fontWeight: 700,
               textTransform: "none",
               px: 3,
               borderRadius: 1.5,
-              "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
+              "&:hover": {
+                background: isEditing
+                  ? "linear-gradient(135deg, #6d28d9, #4f46e5)"
+                  : "linear-gradient(135deg, #6d28d9, #c2410c)",
+              },
             }}
           >
-            Add Smartphone
+            {isEditing ? "Save Changes" : "Add Smartphone"}
           </Button>
         </DialogActions>
       </form>

@@ -21,6 +21,13 @@ export interface BillItem {
   qty: number;
   price: number;
   warranty?: string;
+  smartphoneId?: string;
+  stockItemId?: string;
+  imei?: string;
+  type?: "Brand New" | "Used";
+  brand?: string;
+  model?: string;
+  storage?: string;
 }
 
 export interface Bill {
@@ -32,7 +39,7 @@ export interface Bill {
   time?: string;
   dueDate?: string;
   itemCount: number;
-  status: "Paid" | "Pending" | "Partial" | "Draft";
+  status: "Paid" | "Pending" | "Partial" | "Draft" | "Undone";
   paymentMethod: "Cash" | "Card" | "Bank Transfer" | "Split" | "Installment";
   items: BillItem[];
   subtotal: number;
@@ -43,6 +50,8 @@ export interface Bill {
   cashier: string;
   note?: string;
   createdAt?: any;
+  undoneAt?: string;
+  undoReason?: string;
 }
 
 export function useBills() {

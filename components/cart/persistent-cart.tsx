@@ -226,6 +226,38 @@ export function PersistentCart() {
                           }}
                         />
                       )}
+                      <Box sx={{ display: "flex", gap: 0.5, mt: 0.5, flexWrap: "wrap" }}>
+                        {item.type && (
+                          <Chip
+                            label={item.type}
+                            size="small"
+                            sx={{
+                              height: 15,
+                              fontSize: "0.58rem",
+                              fontWeight: 700,
+                              backgroundColor:
+                                item.type === "Brand New" ? "#ecfdf5" : "#fffbeb",
+                              color: item.type === "Brand New" ? "#059669" : "#d97706",
+                              border: "1px solid",
+                              borderColor:
+                                item.type === "Brand New" ? "#a7f3d0" : "#fde68a",
+                              "& .MuiChip-label": { px: 0.7 },
+                            }}
+                          />
+                        )}
+                        {item.imei && (
+                          <Typography
+                            sx={{
+                              fontSize: "0.58rem",
+                              color: "#64748b",
+                              fontWeight: 600,
+                              lineHeight: "15px",
+                            }}
+                          >
+                            IMEI: {item.imei}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                     <IconButton
                       size="small"
