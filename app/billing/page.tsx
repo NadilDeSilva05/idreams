@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AppBar,
   Box,
@@ -54,6 +55,7 @@ import PosCheckoutTerminal from "@/components/billing/PosCheckoutTerminal";
 import PaymentStatusModal from "@/components/billing/PaymentStatusModal";
 import { useBills } from "@/hooks/useBills";
 import { useSmartphones } from "@/hooks/useSmartphones";
+import { useAuth } from "@/context/auth-context";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-LK", {
@@ -63,6 +65,7 @@ const formatCurrency = (value: number) =>
   }).format(value);
 
 export default function BillingPage() {
+  const { isOwner } = useAuth();
   const [activeSection, setActiveSection] = useState<"terminal" | "invoices">("terminal");
   const { bills, loading, addBill, updateBill, deleteBill } = useBills();
   const { smartphones, markStockSold, markStockAvailable } = useSmartphones();
@@ -104,10 +107,15 @@ export default function BillingPage() {
     setViewingBill(null);
     if (typeof window !== "undefined") {
       document.body.classList.add("printing-via-portal");
+      if (viewMode === "thermal") {
+        document.body.classList.add("printing-thermal");
+      } else {
+        document.body.classList.remove("printing-thermal");
+      }
       requestAnimationFrame(() => {
         setTimeout(() => {
           window.print();
-        }, 250);
+        }, 200);
       });
     }
   };
@@ -118,6 +126,7 @@ export default function BillingPage() {
     const onAfterPrint = () => {
       setPrintingBill(null);
       document.body.classList.remove("printing-via-portal");
+      document.body.classList.remove("printing-thermal");
     };
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
@@ -299,6 +308,7 @@ export default function BillingPage() {
   };
 
   const handleDeleteBill = async (billIdOrFirestoreId: string) => {
+    if (!isOwner) return;
     const match = bills.find((b) => b.id === billIdOrFirestoreId || b.firestoreId === billIdOrFirestoreId);
     if (match?.firestoreId) {
       await deleteBill(match.firestoreId);
@@ -352,6 +362,19 @@ export default function BillingPage() {
                 Instant Checkout • Invoicing
               </Typography>
             </Box>
+            {!isOwner && (
+              <Chip
+                label="Shopkeeper"
+                size="small"
+                sx={{
+                  backgroundColor: "#fff7ed",
+                  color: "#ea580c",
+                  fontWeight: 700,
+                  fontSize: "0.7rem",
+                  border: "1px solid #fed7aa",
+                }}
+              />
+            )}
           </Box>
 
           <CartButton />
@@ -699,6 +722,7 @@ export default function BillingPage() {
                                 </IconButton>
                               </span>
                             </Tooltip>
+                            {isOwner && (
                             <Tooltip title="Update Status">
                               <IconButton
                                 size="small"
@@ -712,19 +736,22 @@ export default function BillingPage() {
                                 <EditIcon sx={{ fontSize: 17 }} />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Delete">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteBill(bill.id)}
-                                sx={{
-                                  color: "#ef4444",
-                                  backgroundColor: "#fef2f2",
-                                  "&:hover": { backgroundColor: "#fee2e2" },
-                                }}
-                              >
-                                <DeleteIcon sx={{ fontSize: 17 }} />
-                              </IconButton>
-                            </Tooltip>
+                            )}
+                            {isOwner && (
+                              <Tooltip title="Delete">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteBill(bill.id)}
+                                  sx={{
+                                    color: "#ef4444",
+                                    backgroundColor: "#fef2f2",
+                                    "&:hover": { backgroundColor: "#fee2e2" },
+                                  }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 17 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -944,17 +971,17 @@ export default function BillingPage() {
         </Alert>
       </Snackbar>
 
-      {/* STANDALONE PRINT PORTAL — rendered OUTSIDE any Dialog / position:fixed
-          container so that window.print() can flow a clean page. Only painted while
-          `printingBill` is set; CSS @media print reveals it and hides everything else. */}
-      {printingBill && (
+      {/* STANDALONE PRINT PORTAL — rendered via createPortal directly into document.body
+          so that in print mode we can display: none everything else in the app without phantom height! */}
+      {printingBill && typeof document !== "undefined" && createPortal(
         <div className="billing-print-portal">
           <InvoiceReceiptView
             bill={printingBill}
             hideControls
             forcedViewMode={printingViewMode}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       <PersistentCart />

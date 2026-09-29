@@ -16,23 +16,25 @@ import {
   Container,
   Checkbox,
   FormControlLabel,
-  Chip,
+  Paper,
 } from "@mui/material";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import LoginIcon from "@mui/icons-material/Login";
-import KeyIcon from "@mui/icons-material/Key";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import Image from "next/image";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import type { UserRole } from "@/context/auth-context";
 
 export default function SignInPage() {
-  const [email, setEmail] = useState("sanjeewa@idreams.lk");
-  const [password, setPassword] = useState("password123");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("ShopOwner");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ export default function SignInPage() {
     }
 
     setLoading(true);
-    const res = await signIn(email, password);
+    const res = await signIn(email, password, selectedRole);
     setLoading(false);
 
     if (res.success) {
@@ -66,11 +68,7 @@ export default function SignInPage() {
     }
   };
 
-  const handleUseDemo = () => {
-    setEmail("sanjeewa@idreams.lk");
-    setPassword("password123");
-    setErrorMsg("");
-  };
+
 
   return (
     <Box
@@ -126,22 +124,100 @@ export default function SignInPage() {
           }}
         >
           <CardContent sx={{ p: { xs: 3, sm: 3.5 } }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.1rem" }}>
-                Sign In
-              </Typography>
-              <Chip
-                label="Shopkeeper"
-                size="small"
+            <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.1rem", mb: 2.5 }}>
+              Sign In
+            </Typography>
+
+            {/* Role Selector */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, mb: 3 }}>
+              <Paper
+                variant="outlined"
+                onClick={() => setSelectedRole("ShopOwner")}
                 sx={{
-                  backgroundColor: "#f5f3ff",
-                  color: "#7c3aed",
-                  fontWeight: 700,
-                  fontSize: "0.72rem",
-                  border: "1px solid #ddd6fe",
+                  p: 1.5,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  borderWidth: 2,
+                  borderColor: selectedRole === "ShopOwner" ? "#7c3aed" : "#e2e8f0",
+                  backgroundColor: selectedRole === "ShopOwner" ? "#f5f3ff" : "#ffffff",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 0.75,
+                  "&:hover": { borderColor: "#7c3aed" },
                 }}
-              />
+              >
+                <AdminPanelSettingsIcon
+                  sx={{
+                    fontSize: 28,
+                    color: selectedRole === "ShopOwner" ? "#7c3aed" : "#94a3b8",
+                  }}
+                />
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", lineHeight: 1.2 }}>
+                    Shop Owner
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.68rem" }}>
+                    Full access
+                  </Typography>
+                </Box>
+              </Paper>
+
+              <Paper
+                variant="outlined"
+                onClick={() => setSelectedRole("Shopkeeper")}
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  borderWidth: 2,
+                  borderColor: selectedRole === "Shopkeeper" ? "#ea580c" : "#e2e8f0",
+                  backgroundColor: selectedRole === "Shopkeeper" ? "#fff7ed" : "#ffffff",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 0.75,
+                  "&:hover": { borderColor: "#ea580c" },
+                }}
+              >
+                <StorefrontIcon
+                  sx={{
+                    fontSize: 28,
+                    color: selectedRole === "Shopkeeper" ? "#ea580c" : "#94a3b8",
+                  }}
+                />
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", lineHeight: 1.2 }}>
+                    Shopkeeper
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.68rem" }}>
+                    POS & Billing only
+                  </Typography>
+                </Box>
+              </Paper>
             </Box>
+
+            {/* Role Description */}
+            {/* <Box
+              sx={{
+                p: 1.5,
+                mb: 2.5,
+                borderRadius: 2,
+                backgroundColor: selectedRole === "ShopOwner" ? "#f5f3ff" : "#fff7ed",
+                border: `1px solid ${selectedRole === "ShopOwner" ? "#ddd6fe" : "#fed7aa"}`,
+              }}
+            >
+              <Typography variant="caption" sx={{ color: selectedRole === "ShopOwner" ? "#7c3aed" : "#ea580c", fontWeight: 700, display: "block" }}>
+                {selectedRole === "ShopOwner" ? "Shop Owner — Full Access" : "Shopkeeper — Restricted Access"}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.72rem" }}>
+                {selectedRole === "ShopOwner"
+                  ? "Can manage inventory, add/edit/delete products, stocks, and bills."
+                  : "Can only use POS cart & billing. Cannot add, edit, or delete products, stocks, or bills."}
+              </Typography>
+            </Box> */}
 
             {errorMsg && (
               <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: "0.84rem" }}>
@@ -238,40 +314,20 @@ export default function SignInPage() {
                   />
                 </Box>
 
-                {/* Remember Me & Demo Fill */}
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        sx={{ color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" }, p: 0.5 }}
-                      />
-                    }
-                    label={<Typography variant="body2" sx={{ color: "#64748b", fontSize: "0.82rem" }}>Remember me</Typography>}
-                  />
+                {/* Remember Me */}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      sx={{ color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" }, p: 0.5 }}
+                    />
+                  }
+                  label={<Typography variant="body2" sx={{ color: "#64748b", fontSize: "0.82rem" }}>Remember me</Typography>}
+                />
 
-                  <Button
-                    size="small"
-                    variant="text"
-                    startIcon={<KeyIcon sx={{ fontSize: 14 }} />}
-                    onClick={handleUseDemo}
-                    sx={{
-                      textTransform: "none",
-                      fontWeight: 700,
-                      fontSize: "0.78rem",
-                      color: "#7c3aed",
-                      p: 0,
-                      minWidth: "auto",
-                      "&:hover": { color: "#ea580c", backgroundColor: "transparent" },
-                    }}
-                  >
-                    Demo Login
-                  </Button>
-                </Box>
-
-                {/* Submit Button with Logo's signature Purple to Sunset Orange Gradient */}
+                {/* Submit Button */}
                 <Button
                   fullWidth
                   type="submit"
@@ -279,7 +335,9 @@ export default function SignInPage() {
                   disabled={loading}
                   startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <LoginIcon sx={{ fontSize: 19 }} />}
                   sx={{
-                    background: "linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #ea580c 100%)",
+                    background: selectedRole === "ShopOwner"
+                      ? "linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #ea580c 100%)"
+                      : "linear-gradient(135deg, #ea580c 0%, #f97316 100%)",
                     fontWeight: 700,
                     py: 1.15,
                     fontSize: "0.92rem",
@@ -288,13 +346,15 @@ export default function SignInPage() {
                     boxShadow: "0 6px 18px rgba(124, 58, 237, 0.28)",
                     transition: "all 0.2s ease-in-out",
                     "&:hover": {
-                      background: "linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #c2410c 100%)",
+                      background: selectedRole === "ShopOwner"
+                        ? "linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #c2410c 100%)"
+                        : "linear-gradient(135deg, #c2410c 0%, #ea580c 100%)",
                       boxShadow: "0 8px 22px rgba(124, 58, 237, 0.38)",
                       transform: "translateY(-1px)",
                     },
                   }}
                 >
-                  {loading ? "Signing In..." : "Sign In"}
+                  {loading ? "Signing In..." : `Sign In as ${selectedRole === "ShopOwner" ? "Shop Owner" : "Shopkeeper"}`}
                 </Button>
               </Box>
             </form>
@@ -304,7 +364,7 @@ export default function SignInPage() {
             {/* Link to Sign Up */}
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="body2" sx={{ color: "#64748b", fontSize: "0.84rem" }}>
-                Need a new shopkeeper account?{" "}
+                Need a new account?{" "}
                 <Link
                   href="/signup"
                   style={{

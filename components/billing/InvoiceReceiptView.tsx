@@ -4,16 +4,13 @@ import { useState } from "react";
 import {
   Box,
   Card,
-  CardContent,
   Typography,
   Divider,
   Button,
-  Chip,
   ButtonGroup,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
-import PhoneIcon from "@mui/icons-material/Phone";
 
 export type BillStatus = "Paid" | "Pending" | "Partial" | "Draft" | "Undone";
 
@@ -61,12 +58,63 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const formatAmount = (value: number) =>
+  new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(value);
+
+/* ---------- i-Dreams invoice design tokens ---------- */
+const NAVY = "#2d3163";
+const NAVY_DARK = "#252852";
+const PURPLE = "#4b2e8c";
+const CHARCOAL = "#3f4247";
+const FOOTER_DARK = "#1f2125";
+const ROW_ALT = "#efecf7";
+const BORDER = "#dcdbe6";
+const LABEL_BLUE = "#2d3163";
+
+const MIN_ROWS = 10;
+
+const TERMS = [
+  "Item once purchased and taken out from the store premises cannot be returned under any conditions.",
+  "Warranty does not cover Physical Damages (Drop damages, Water Damages Etc..) Hardware Damages (No Power, Battery, Display Etc..)",
+  "We require the physical invoice and warranty sticker should be available in the warranty approval process.",
+  "In mobile phone exchanges, the customer is responsible for any legal issues with the exchanged phone.",
+];
+
 interface InvoiceReceiptViewProps {
   bill: Bill;
   onPrint?: (viewMode: "standard" | "thermal") => void;
   onUpdateStatus?: (bill: Bill) => void;
   hideControls?: boolean;
   forcedViewMode?: "standard" | "thermal";
+}
+
+/* Small labelled field used in the Bill No / Date / Customer row */
+function InfoField({
+  label,
+  children,
+  flex,
+}: {
+  label: string;
+  children?: React.ReactNode;
+  flex: number | string;
+}) {
+  return (
+    <Box sx={{ flex, minWidth: 0 }}>
+      <Typography
+        sx={{
+          fontSize: "0.68rem",
+          fontWeight: 800,
+          color: LABEL_BLUE,
+          textTransform: "uppercase",
+          pb: 0.5,
+          borderBottom: `1.5px solid ${LABEL_BLUE}`,
+        }}
+      >
+        {label}
+      </Typography>
+      <Box sx={{ minHeight: 44, pt: 0.75, px: 0.5 }}>{children}</Box>
+    </Box>
+  );
 }
 
 export default function InvoiceReceiptView({
@@ -88,20 +136,11 @@ export default function InvoiceReceiptView({
     }
   };
 
-  const getStatusColor = (status: BillStatus) => {
-    switch (status) {
-      case "Paid":
-        return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
-      case "Pending":
-        return { bg: "#fff7ed", color: "#ea580c", border: "#fed7aa" };
-      case "Partial":
-        return { bg: "#f5f3ff", color: "#7c3aed", border: "#ddd6fe" };
-      default:
-        return { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" };
-    }
-  };
+  // Always show at least 10 rows, like the printed invoice pad
+  const rowCount = Math.max(MIN_ROWS, bill.items.length);
+  const rows = Array.from({ length: rowCount }, (_, i) => bill.items[i] ?? null);
 
-  const statusStyle = getStatusColor(bill.status);
+  const gridCols = "44px 1fr 70px 130px 130px";
 
   return (
     <Box>
@@ -111,232 +150,338 @@ export default function InvoiceReceiptView({
           className="print-hidden"
           sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}
         >
-        <ButtonGroup size="small" variant="outlined">
-          <Button
-            variant={viewMode === "standard" ? "contained" : "outlined"}
-            onClick={() => setViewMode("standard")}
-            sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.78rem" }}
-          >
-            A4 Invoice
-          </Button>
-          <Button
-            variant={viewMode === "thermal" ? "contained" : "outlined"}
-            onClick={() => setViewMode("thermal")}
-            sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.78rem" }}
-          >
-            Thermal POS Slip
-          </Button>
-        </ButtonGroup>
+          <ButtonGroup size="small" variant="outlined">
+            <Button
+              variant={effectiveViewMode === "standard" ? "contained" : "outlined"}
+              onClick={() => setViewMode("standard")}
+              sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.78rem" }}
+            >
+              A4 Invoice
+            </Button>
+            <Button
+              variant={effectiveViewMode === "thermal" ? "contained" : "outlined"}
+              onClick={() => setViewMode("thermal")}
+              sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.78rem" }}
+            >
+              Thermal POS Slip
+            </Button>
+          </ButtonGroup>
 
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<PrintIcon />}
-          onClick={handlePrint}
-          sx={{
-              background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+            sx={{
+              background: `linear-gradient(135deg, ${NAVY}, ${PURPLE})`,
               fontWeight: 700,
               textTransform: "none",
               borderRadius: 1.5,
-              "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
-          }}
-        >
-          Print
-        </Button>
-      </Box>
+              "&:hover": { background: `linear-gradient(135deg, ${NAVY_DARK}, #3d2574)` },
+            }}
+          >
+            Print
+          </Button>
+        </Box>
       )}
 
-      {/* STANDARD A4 INVOICE VIEW */}
-      {viewMode === "standard" && (
+      {/* STANDARD A4 INVOICE VIEW — i-Dreams Sales & Service Bill */}
+      {effectiveViewMode === "standard" && (
         <Card
           id="printable-invoice"
           sx={{
-            borderRadius: 2.5,
+            maxWidth: 794,
+            mx: "auto",
+            borderRadius: 0,
             border: "1px solid #e2e8f0",
             boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
             backgroundColor: "#ffffff",
-            overflow: "hidden",
+            p: { xs: 1.5, sm: 3 },
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact",
           }}
         >
-          {/* Top Brand Banner */}
+          {/* Brand header */}
           <Box
             sx={{
-              background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
-              p: 3,
+              background: `linear-gradient(90deg, ${NAVY_DARK} 0%, ${NAVY} 60%, #3b4080 100%)`,
               color: "#ffffff",
+              px: 2.5,
+              py: 1.75,
               display: "flex",
+              alignItems: "center",
               justifyContent: "space-between",
-              alignItems: "flex-start",
+              gap: 2,
             }}
           >
-            <Box>
-              <Typography variant="caption" sx={{ letterSpacing: "0.15em", fontWeight: 800, color: "rgba(255,255,255,0.75)", textTransform: "uppercase" }}>
-                Official Invoice
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
-                iDreams Mobile & Electronics
-              </Typography>
-              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.85)", display: "block", mt: 0.25 }}>
-                Retail, Smartphones, Accessories & Repairs
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: "right" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.75 }}>
               <Box
                 sx={{
-                  display: "inline-block",
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: 1.5,
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
-                  backdropFilter: "blur(4px)",
-                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  width: 58,
+                  height: 58,
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  backgroundColor: "#000000",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
-                <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>
-                  {bill.id}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/Images/idrams-invoice.png"
+                  alt="i-Dreams"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: "1.75rem", fontWeight: 800, lineHeight: 1, letterSpacing: "-0.01em" }}>
+                  i-Dreams
+                </Typography>
+                <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: "#e9c46a", mt: 0.4, letterSpacing: "0.02em" }}>
+                  TRUST IN EVERY TOUCH
                 </Typography>
               </Box>
-              <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "rgba(255,255,255,0.8)" }}>
-                Date: {bill.date}
+            </Box>
+
+            <Box
+              sx={{
+                backgroundColor: "#ffffff",
+                borderRadius: 0.5,
+                p: 0.4,
+                display: "flex",
+                flexShrink: 0,
+              }}
+            >
+              <QrCode2Icon sx={{ fontSize: 56, color: "#111827" }} />
+            </Box>
+
+            <Box sx={{ textAlign: "right" }}>
+              <Typography sx={{ fontSize: "1.65rem", fontWeight: 900, lineHeight: 1, letterSpacing: "0.01em" }}>
+                INVOICE
+              </Typography>
+              <Typography sx={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.75)", mt: 0.4 }}>
+                Sales &amp; Service Bill
               </Typography>
             </Box>
           </Box>
 
-          <CardContent sx={{ p: 3 }}>
-            {/* Customer Details - ONLY Name & Contact No */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 2, mb: 3 }}>
-              <Box sx={{ minWidth: 200 }}>
-                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Customer Details:
-                </Typography>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.05rem" }}>
-                  {bill.customer}
-                </Typography>
-                <Typography variant="body2" sx={{ color: "#475569", display: "flex", alignItems: "center", gap: 0.5, mt: 0.25 }}>
-                  <PhoneIcon sx={{ fontSize: 14, color: "#7c3aed" }} />
-                  {bill.phone}
-                </Typography>
-              </Box>
-
-              <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Status & Method:
-                </Typography>
-                <Box sx={{ mt: 0.5, display: "flex", alignItems: "center", gap: 1, justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
-                  <Chip
-                    label={bill.status.toUpperCase()}
-                    size="small"
-                    sx={{
-                      backgroundColor: statusStyle.bg,
-                      color: statusStyle.color,
-                      border: `1px solid ${statusStyle.border}`,
-                      fontWeight: 800,
-                      fontSize: "0.72rem",
-                    }}
-                  />
-                  <Chip
-                    label={bill.paymentMethod}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 700, fontSize: "0.72rem", borderColor: "#cbd5e1" }}
-                  />
-                </Box>
-                <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 0.75 }}>
-                  Cashier: <strong>{bill.cashier}</strong>
-                </Typography>
-              </Box>
-            </Box>
-
-            <Divider sx={{ mb: 2.5 }} />
-
-            {/* Line Items Table */}
-            <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", mb: 1, display: "block" }}>
-              Purchased Items:
+          {/* Address / contact bar */}
+          <Box
+            sx={{
+              mt: 1,
+              backgroundColor: CHARCOAL,
+              color: "#ffffff",
+              px: 2,
+              py: 0.6,
+              display: "flex",
+              flexWrap: "nowrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 0.5,
+            }}
+          >
+            <Typography sx={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.85)" }}>
+              157/A, Anagarika Dharmapala Mawatha, Matara
             </Typography>
+            <Typography sx={{ fontSize: "0.82rem", fontWeight: 800 }}>
+              +947 0 430 5200 / +947 1 391 3728
+            </Typography>
+          </Box>
 
-            <Box sx={{ backgroundColor: "#f8fafc", borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden", mb: 3 }}>
-              {bill.items.map((item, idx) => (
+          {/* Bill no / Date / Customer */}
+          <Box
+            sx={{
+              mt: 1.25,
+              p: 1.25,
+              border: `1px solid ${BORDER}`,
+              display: "flex",
+              gap: 2,
+              flexWrap: "nowrap",
+            }}
+          >
+            <InfoField label="Bill No" flex="0 0 140px">
+              <Typography sx={{ fontSize: "1.25rem", fontWeight: 700, color: "#1f2937", lineHeight: 1.2 }}>
+                {bill.id}
+              </Typography>
+            </InfoField>
+            <InfoField label="Date" flex="0 0 130px">
+              <Typography sx={{ fontSize: "0.9rem", color: "#1f2937" }}>{bill.date}</Typography>
+            </InfoField>
+            <InfoField label="Customer Name / Contact" flex={1}>
+              <Typography sx={{ fontSize: "0.92rem", fontWeight: 700, color: "#1f2937" }}>
+                {bill.customer}
+              </Typography>
+              <Typography sx={{ fontSize: "0.8rem", color: "#4b5563" }}>{bill.phone}</Typography>
+            </InfoField>
+          </Box>
+
+          {/* Items table */}
+          <Box sx={{ mt: 2.5, border: `1px solid ${BORDER}`, overflow: "visible" }}>
+            <Box sx={{ width: "100%" }}>
+              {/* Table head */}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: gridCols,
+                  backgroundColor: NAVY,
+                  color: "#ffffff",
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  "& > div": { px: 1.25, py: 0.65 },
+                }}
+              >
+                <Box>#</Box>
+                <Box>Description</Box>
+                <Box sx={{ textAlign: "center" }}>Qty</Box>
+                <Box sx={{ textAlign: "center" }}>Unit Price</Box>
+                <Box sx={{ textAlign: "right" }}>Amount</Box>
+              </Box>
+
+              {/* Table rows */}
+              {rows.map((item, idx) => (
                 <Box
                   key={idx}
                   sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
+                    display: "grid",
+                    gridTemplateColumns: gridCols,
+                    minHeight: 33,
                     alignItems: "center",
-                    p: 1.75,
-                    borderBottom: idx < bill.items.length - 1 ? "1px solid #f1f5f9" : "none",
+                    backgroundColor: idx % 2 === 1 ? ROW_ALT : "#ffffff",
+                    borderBottom: idx < rows.length - 1 ? `1px solid ${BORDER}` : "none",
+                    "& > div": { px: 1.25, py: 0.3, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" },
+                    "& > div:not(:first-of-type)": { borderLeft: `1px solid ${BORDER}` },
                   }}
                 >
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.92rem" }}>
-                      {item.name}
-                    </Typography>
-                    {item.warranty && (
-                      <Typography variant="caption" sx={{ color: "#059669", fontWeight: 600, display: "block" }}>
-                        ✓ Warranty: {item.warranty}
+                  <Box>
+                    <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: NAVY }}>{idx + 1}</Typography>
+                  </Box>
+                  <Box>
+                    {item && (
+                      <>
+                        <Typography sx={{ fontWeight: 700, fontSize: "0.82rem", color: "#111827", lineHeight: 1.2 }}>
+                          {item.name}
+                        </Typography>
+                        {item.imei && (
+                          <Typography sx={{ fontSize: "0.65rem", color: "#6b7280" }}>IMEI: {item.imei}</Typography>
+                        )}
+                        {item.warranty && (
+                          <Typography sx={{ fontSize: "0.65rem", color: "#059669", fontWeight: 600 }}>
+                            Warranty: {item.warranty}
+                          </Typography>
+                        )}
+                      </>
+                    )}
+                  </Box>
+                  <Box sx={{ alignItems: "center" }}>
+                    {item && <Typography sx={{ fontSize: "0.82rem" }}>{item.qty}</Typography>}
+                  </Box>
+                  <Box sx={{ alignItems: "center" }}>
+                    {item && <Typography sx={{ fontSize: "0.82rem" }}>{formatAmount(item.price)}</Typography>}
+                  </Box>
+                  <Box sx={{ alignItems: "flex-end" }}>
+                    {item && (
+                      <Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>
+                        {formatAmount(item.qty * item.price)}
                       </Typography>
                     )}
-                    <Typography variant="caption" sx={{ color: "#64748b" }}>
-                      {item.qty} × {formatCurrency(item.price)}
-                    </Typography>
                   </Box>
-                  <Typography sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "0.95rem" }}>
-                    {formatCurrency(item.qty * item.price)}
-                  </Typography>
                 </Box>
               ))}
             </Box>
+          </Box>
 
-            {/* Financial Summary */}
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
-              <Box sx={{ width: { xs: "100%", sm: 260 }, display: "grid", gap: 1 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>Subtotal</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(bill.subtotal)}</Typography>
-                </Box>
-
-                {bill.discount > 0 && (
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography variant="body2" sx={{ color: "#ef4444" }}>Discount</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: "#ef4444" }}>- {formatCurrency(bill.discount)}</Typography>
-                  </Box>
-                )}
-
-                <Divider sx={{ my: 0.5 }} />
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", color: "#0f172a" }}>Total Amount</Typography>
-                  <Typography sx={{ fontWeight: 900, fontSize: "1.2rem", color: "#7c3aed" }}>
-                    {formatCurrency(bill.total)}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-
-            {/* Note Box */}
-            {bill.note && (
-              <Box sx={{ p: 1.5, backgroundColor: "#f8fafc", borderRadius: 2, border: "1px solid #e2e8f0", mb: 3 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                  Note:
-                </Typography>
-                <Typography variant="body2" sx={{ color: "#334155", mt: 0.25 }}>
-                  {bill.note}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Footer */}
-            <Box sx={{ pt: 2, borderTop: "1px dashed #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.72rem" }}>
-                Thank you for shopping at iDreams Mobile!
+          {/* Terms & totals */}
+          <Box
+            sx={{
+              mt: 1.25,
+              display: "flex",
+              gap: 2.5,
+              alignItems: "flex-start",
+              flexDirection: "row",
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontSize: "0.7rem", fontWeight: 800, color: "#111827", mb: 0.35 }}>
+                TERMS &amp; NOTES
               </Typography>
-              <QrCode2Icon sx={{ fontSize: 36, color: "#7c3aed", opacity: 0.85 }} />
+              <Box component="ul" sx={{ m: 0, pl: 2, display: "grid", gap: 0.35 }}>
+                {TERMS.map((t) => (
+                  <Typography key={t} component="li" sx={{ fontSize: "0.66rem", lineHeight: 1.25, color: "#111827" }}>
+                    {t}
+                  </Typography>
+                ))}
+              </Box>
+              {bill.note && (
+                <Typography sx={{ fontSize: "0.66rem", color: "#374151", mt: 0.75 }}>
+                  <strong>Note:</strong> {bill.note}
+                </Typography>
+              )}
             </Box>
-          </CardContent>
+
+            <Box sx={{ width: 240, border: `1px solid ${BORDER}`, flexShrink: 0 }}>
+              <Box sx={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
+                <Typography sx={{ width: 95, px: 1.25, py: 0.8, fontWeight: 700, fontSize: "0.85rem", borderRight: `1px solid ${BORDER}` }}>
+                  Subtotal
+                </Typography>
+                <Typography sx={{ flex: 1, px: 1.25, py: 0.8, fontSize: "0.82rem", textAlign: "right" }}>
+                  Rs. {formatAmount(bill.subtotal)}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
+                <Typography sx={{ width: 95, px: 1.25, py: 0.8, fontWeight: 700, fontSize: "0.85rem", borderRight: `1px solid ${BORDER}` }}>
+                  Discount
+                </Typography>
+                <Typography sx={{ flex: 1, px: 1.25, py: 0.8, fontSize: "0.82rem", textAlign: "right" }}>
+                  Rs. {bill.discount > 0 ? formatAmount(bill.discount) : "0"}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", backgroundColor: PURPLE, color: "#ffffff" }}>
+                <Typography sx={{ width: 95, px: 1.25, py: 1, fontWeight: 800, fontSize: "0.95rem" }}>
+                  TOTAL
+                </Typography>
+                <Typography sx={{ flex: 1, px: 1.25, py: 1, fontWeight: 800, fontSize: "0.9rem", textAlign: "right" }}>
+                  Rs. {formatAmount(bill.total)}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Signatures */}
+          <Box sx={{ mt: 2.25, display: "flex", justifyContent: "space-between", px: 2 }}>
+            {["Authorized Signature", "Customer Signature"].map((label) => (
+              <Box key={label} sx={{ width: 170, textAlign: "center" }}>
+                <Box sx={{ borderTop: "2px dotted #6b7280", mb: 0.4 }} />
+                <Typography sx={{ fontSize: "0.68rem", color: "#111827", fontWeight: 600 }}>{label}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Footer bar */}
+          <Box
+            sx={{
+              mt: 1.5,
+              backgroundColor: FOOTER_DARK,
+              color: "#ffffff",
+              py: 0.85,
+              textAlign: "center",
+              fontSize: "0.68rem",
+            }}
+          >
+            <Box component="span" sx={{ fontWeight: 700, color: "#e9c46a" }}>i-Dreams</Box>
+            <Box component="span" sx={{ mx: 1, opacity: 0.6 }}>|</Box>
+            <Box component="span" sx={{ opacity: 0.9 }}>Mobile Sales &amp; Repair Specialists</Box>
+            <Box component="span" sx={{ mx: 1, opacity: 0.6 }}>|</Box>
+            <Box component="span" sx={{ opacity: 0.9 }}>Matara</Box>
+          </Box>
         </Card>
       )}
 
       {/* THERMAL 80MM RECEIPT VIEW */}
-      {viewMode === "thermal" && (
+      {effectiveViewMode === "thermal" && (
         <Card
           id="printable-thermal-receipt"
           sx={{

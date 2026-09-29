@@ -67,9 +67,11 @@ import AddBrandModal from "@/components/smartphones/AddBrandModal";
 import AddStockModal from "@/components/smartphones/AddStockModal";
 import ViewStockModal from "@/components/smartphones/ViewStockModal";
 import CircularProgress from "@mui/material/CircularProgress";
+import { useAuth } from "@/context/auth-context";
 
 export default function SmartphonesPage() {
   const { addToCart } = useCart();
+  const { isOwner } = useAuth();
   const {
     smartphones,
     loading,
@@ -127,17 +129,25 @@ export default function SmartphonesPage() {
 
   const handleAddStock = async (
     smartphoneId: string,
-    stock: Omit<SmartphoneStockItem, "id" | "createdAt">
+    stock:
+      | Omit<SmartphoneStockItem, "id" | "createdAt">
+      | Omit<SmartphoneStockItem, "id" | "createdAt">[]
   ) => {
+    if (!isOwner) return;
     await addStock(smartphoneId, stock);
+    const count = Array.isArray(stock) ? stock.length : 1;
     setToast({
       open: true,
-      message: `Stock unit (IMEI: ${stock.imei}) added successfully!`,
+      message:
+        count > 1
+          ? `${count} stock units added successfully!`
+          : `Stock unit (IMEI: ${(stock as any).imei}) added successfully!`,
       severity: "success",
     });
   };
 
   const handleDeleteStock = async (smartphoneId: string, stockId: string) => {
+    if (!isOwner) return;
     await deleteStock(smartphoneId, stockId);
     setToast({
       open: true,
@@ -168,7 +178,7 @@ export default function SmartphonesPage() {
     handleCloseMenu();
   };
   const handleConfirmDeleteSmartphone = async () => {
-    if (!deleteConfirmOpen || !deleteConfirmOpen.id) return;
+    if (!deleteConfirmOpen || !deleteConfirmOpen.id || !isOwner) return;
     try {
       setIsDeleting(true);
       await deleteSmartphone(deleteConfirmOpen.id);
@@ -191,7 +201,7 @@ export default function SmartphonesPage() {
   };
 
   const handleUpdateSmartphone = async (updated: GroupedSmartphone) => {
-    if (!updated.id) return;
+    if (!updated.id || !isOwner) return;
     await updateSmartphone(updated.id, {
       brand: updated.brand,
       model: updated.model,
@@ -362,6 +372,19 @@ export default function SmartphonesPage() {
               <SmartphoneIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
               Smartphones Store
             </Typography>
+            {!isOwner && (
+              <Chip
+                label="View & Cart Only"
+                size="small"
+                sx={{
+                  backgroundColor: "#fff7ed",
+                  color: "#ea580c",
+                  fontWeight: 700,
+                  fontSize: "0.7rem",
+                  border: "1px solid #fed7aa",
+                }}
+              />
+            )}
           </Box>
           <CartButton />
         </Toolbar>
@@ -447,43 +470,47 @@ export default function SmartphonesPage() {
                   Reset Filters
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                startIcon={<BrandingWatermarkIcon sx={{ fontSize: "1rem" }} />}
-                onClick={() => setIsAddBrandModalOpen(true)}
-                sx={{
-                  fontWeight: 700,
-                  fontSize: "0.82rem",
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 1.8,
-                  py: 0.75,
-                  borderColor: "#ddd6fe",
-                  color: "#7c3aed",
-                  backgroundColor: "#f5f3ff",
-                  "&:hover": { borderColor: "#c4b5fd", backgroundColor: "#ede9fe" },
-                }}
-              >
-                Add Brand
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setIsAddSmartphoneModalOpen(true)}
-                sx={{
-                  background: "linear-gradient(135deg, #7c3aed, #ea580c)",
-                  fontWeight: 700,
-                  fontSize: "0.82rem",
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 2,
-                  py: 0.75,
-                  boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
-                  "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
-                }}
-              >
-                Add Smartphone
-              </Button>
+              {isOwner && (
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<BrandingWatermarkIcon sx={{ fontSize: "1rem" }} />}
+                    onClick={() => setIsAddBrandModalOpen(true)}
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.82rem",
+                      textTransform: "none",
+                      borderRadius: 2,
+                      px: 1.8,
+                      py: 0.75,
+                      borderColor: "#ddd6fe",
+                      color: "#7c3aed",
+                      backgroundColor: "#f5f3ff",
+                      "&:hover": { borderColor: "#c4b5fd", backgroundColor: "#ede9fe" },
+                    }}
+                  >
+                    Add Brand
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setIsAddSmartphoneModalOpen(true)}
+                    sx={{
+                      background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+                      fontWeight: 700,
+                      fontSize: "0.82rem",
+                      textTransform: "none",
+                      borderRadius: 2,
+                      px: 2,
+                      py: 0.75,
+                      boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
+                      "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
+                    }}
+                  >
+                    Add Smartphone
+                  </Button>
+                </>
+              )}
             </Box>
           </Box>
 
@@ -611,19 +638,21 @@ export default function SmartphonesPage() {
                       >
                         {product.brand}
                       </Typography>
-                      <Tooltip title="More options">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleOpenMenu(e, product)}
-                          sx={{
-                            color: "#64748b",
-                            p: 0.5,
-                            "&:hover": { backgroundColor: "#f1f5f9", color: "#7c3aed" },
-                          }}
-                        >
-                          <MoreVertIcon sx={{ fontSize: 20 }} />
-                        </IconButton>
-                      </Tooltip>
+                      {isOwner && (
+                        <Tooltip title="More options">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleOpenMenu(e, product)}
+                            sx={{
+                              color: "#64748b",
+                              p: 0.5,
+                              "&:hover": { backgroundColor: "#f1f5f9", color: "#7c3aed" },
+                            }}
+                          >
+                            <MoreVertIcon sx={{ fontSize: 20 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
 
                     <Typography variant="h6" sx={{ fontWeight: 800, mb: 1.5, color: "#1e293b", fontSize: "1.05rem" }}>
@@ -693,29 +722,31 @@ export default function SmartphonesPage() {
 
                   <CardActions sx={{ p: 2, pt: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        startIcon={<AddIcon sx={{ fontSize: "0.95rem !important" }} />}
-                        onClick={() => setStockTargetPhone(product)}
-                        sx={{
-                          borderColor: "#ddd6fe",
-                          color: "#7c3aed",
-                          backgroundColor: "#f5f3ff",
-                          fontWeight: 700,
-                          fontSize: "0.78rem",
-                          textTransform: "none",
-                          py: 0.7,
-                          borderRadius: 1.5,
-                          "&:hover": {
-                            borderColor: "#c4b5fd",
-                            backgroundColor: "#ede9fe",
-                          },
-                        }}
-                      >
-                        Add Stocks
-                      </Button>
+                      {isOwner && (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          startIcon={<AddIcon sx={{ fontSize: "0.95rem !important" }} />}
+                          onClick={() => setStockTargetPhone(product)}
+                          sx={{
+                            borderColor: "#ddd6fe",
+                            color: "#7c3aed",
+                            backgroundColor: "#f5f3ff",
+                            fontWeight: 700,
+                            fontSize: "0.78rem",
+                            textTransform: "none",
+                            py: 0.7,
+                            borderRadius: 1.5,
+                            "&:hover": {
+                              borderColor: "#c4b5fd",
+                              backgroundColor: "#ede9fe",
+                            },
+                          }}
+                        >
+                          Add Stocks
+                        </Button>
+                      )}
                       <Button
                         fullWidth
                         variant="outlined"
@@ -791,14 +822,16 @@ export default function SmartphonesPage() {
               <Button variant="outlined" onClick={handleResetFilters} startIcon={<RestartAltIcon />}>
                 Clear Filters
               </Button>
-              <Button
-                variant="contained"
-                onClick={() => setIsAddSmartphoneModalOpen(true)}
-                startIcon={<AddIcon />}
-                sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
-              >
-                Add New Smartphone
-              </Button>
+              {isOwner && (
+                <Button
+                  variant="contained"
+                  onClick={() => setIsAddSmartphoneModalOpen(true)}
+                  startIcon={<AddIcon />}
+                  sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
+                >
+                  Add New Smartphone
+                </Button>
+              )}
             </Box>
           </Paper>
         )}
@@ -1717,21 +1750,24 @@ export default function SmartphonesPage() {
         existingBrands={allBrands}
       />
 
-      {/* Add Stock Modal */}
-      <AddStockModal
-        open={Boolean(stockTargetPhone)}
-        onClose={() => setStockTargetPhone(null)}
-        smartphone={currentAddStockPhone}
-        onAddStock={handleAddStock}
-      />
+      {/* Add Stock Modal - owners only */}
+      {isOwner && (
+        <AddStockModal
+          open={Boolean(stockTargetPhone)}
+          onClose={() => setStockTargetPhone(null)}
+          smartphone={currentAddStockPhone}
+          onAddStock={handleAddStock}
+        />
+      )}
 
       {/* View Stock Modal */}
       <ViewStockModal
         open={Boolean(viewStockTargetPhone)}
         onClose={() => setViewStockTargetPhone(null)}
         smartphone={currentViewPhone}
-        onOpenAddStock={(phone) => setStockTargetPhone(phone)}
+        onOpenAddStock={(phone) => isOwner && setStockTargetPhone(phone)}
         onDeleteStock={handleDeleteStock}
+        isOwner={isOwner}
       />
 
       {/* Toast Notification */}

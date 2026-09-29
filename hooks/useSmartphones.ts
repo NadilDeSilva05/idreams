@@ -13,7 +13,7 @@ import {
   orderBy,
   arrayUnion,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, sanitizeFirestoreData } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import {
   GroupedSmartphone,
@@ -29,14 +29,17 @@ export function useSmartphones() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use ownerUid so shopkeepers see the same data as the owner
+  const ownerUid = user?.ownerUid;
+
   useEffect(() => {
-    if (!user?.uid) {
+    if (!ownerUid) {
       setSmartphones([]);
       setLoading(false);
       return;
     }
 
-    const ref = collection(db, "users", user.uid, "smartphones");
+    const ref = collection(db, "users", ownerUid, "smartphones");
     const q = query(ref, orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -61,54 +64,63 @@ export function useSmartphones() {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [ownerUid]);
 
   const addSmartphone = async (data: Omit<GroupedSmartphone, "id" | "createdAt">) => {
-    if (!user?.uid) return;
-    const ref = collection(db, "users", user.uid, "smartphones");
+    if (!ownerUid) return;
+    const ref = collection(db, "users", ownerUid, "smartphones");
+    const sanitized = sanitizeFirestoreData(data);
     await addDoc(ref, {
-      ...data,
-      stocks: data.stocks || [],
+      ...sanitized,
+      stocks: sanitized.stocks || [],
       createdAt: serverTimestamp(),
     });
   };
 
   const updateSmartphone = async (id: string, data: Partial<GroupedSmartphone>) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "smartphones", id);
-    await updateDoc(ref, data);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "smartphones", id);
+    const sanitized = sanitizeFirestoreData(data);
+    await updateDoc(ref, sanitized as Record<string, unknown>);
   };
 
   const deleteSmartphone = async (id: string) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "smartphones", id);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "smartphones", id);
     await deleteDoc(ref);
   };
 
   const addStock = async (
     smartphoneId: string,
-    stockData: Omit<SmartphoneStockItem, "id" | "createdAt">
+    stockData:
+      | Omit<SmartphoneStockItem, "id" | "createdAt">
+      | Omit<SmartphoneStockItem, "id" | "createdAt">[]
   ) => {
-    if (!user?.uid) return;
-    const newStockItem: SmartphoneStockItem = {
-      ...stockData,
-      id: "stk_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
-      createdAt: new Date().toISOString(),
-      status: stockData.status || "Available",
-    };
-    const ref = doc(db, "users", user.uid, "smartphones", smartphoneId);
+    if (!ownerUid) return;
+    const items = Array.isArray(stockData) ? stockData : [stockData];
+    if (items.length === 0) return;
+    const newStockItems: SmartphoneStockItem[] = items.map((s, idx) => {
+      const cleanItem = sanitizeFirestoreData(s);
+      return {
+        ...cleanItem,
+        id: "stk_" + (Date.now() + idx) + "_" + Math.random().toString(36).substring(2, 7),
+        createdAt: new Date().toISOString(),
+        status: cleanItem.status || "Available",
+      };
+    });
+    const ref = doc(db, "users", ownerUid, "smartphones", smartphoneId);
     await updateDoc(ref, {
-      stocks: arrayUnion(newStockItem),
+      stocks: arrayUnion(...newStockItems),
     });
   };
 
   const deleteStock = async (smartphoneId: string, stockId: string) => {
-    if (!user?.uid) return;
+    if (!ownerUid) return;
     const phone = smartphones.find((s) => s.id === smartphoneId);
     if (!phone) return;
     const currentStocks = phone.stocks || [];
     const updatedStocks = currentStocks.filter((s) => s.id !== stockId);
-    const ref = doc(db, "users", user.uid, "smartphones", smartphoneId);
+    const ref = doc(db, "users", ownerUid, "smartphones", smartphoneId);
     await updateDoc(ref, {
       stocks: updatedStocks,
     });
@@ -119,14 +131,15 @@ export function useSmartphones() {
     stockId: string,
     data: Partial<SmartphoneStockItem>
   ) => {
-    if (!user?.uid) return;
+    if (!ownerUid) return;
     const phone = smartphones.find((s) => s.id === smartphoneId);
     if (!phone) return;
     const currentStocks = phone.stocks || [];
+    const sanitized = sanitizeFirestoreData(data);
     const updatedStocks = currentStocks.map((s) =>
-      s.id === stockId ? { ...s, ...data } : s
+      s.id === stockId ? { ...s, ...sanitized } : s
     );
-    const ref = doc(db, "users", user.uid, "smartphones", smartphoneId);
+    const ref = doc(db, "users", ownerUid, "smartphones", smartphoneId);
     await updateDoc(ref, {
       stocks: updatedStocks,
     });

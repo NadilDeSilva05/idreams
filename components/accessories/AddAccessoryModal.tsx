@@ -44,6 +44,7 @@ export default function AddAccessoryModal({
   const [customBrand, setCustomBrand] = useState("");
   const [specifications, setSpecifications] = useState("");
   const [price, setPrice] = useState("");
+  const [initialStock, setInitialStock] = useState("");
   const [inStock, setInStock] = useState(true);
 
   // Errors
@@ -56,6 +57,7 @@ export default function AddAccessoryModal({
     setCustomBrand("");
     setSpecifications("");
     setPrice("");
+    setInitialStock("");
     setInStock(true);
     setErrors({});
   };
@@ -82,13 +84,22 @@ export default function AddAccessoryModal({
       return;
     }
 
+    const initQty = initialStock ? parseInt(initialStock, 10) : 0;
+    const initialStockEntries = initQty > 0 ? [{
+      id: "astk_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      quantity: initQty,
+      createdAt: new Date().toISOString(),
+      notes: "Opening Stock",
+    }] : [];
+
     onAdd({
       name: name.trim(),
       category,
       brand: selectedBrand,
       specifications: specifications.trim() || undefined,
       price: priceNum,
-      inStock,
+      inStock: initQty > 0 ? true : inStock,
+      stocks: initialStockEntries,
     });
 
     handleClose();
@@ -233,20 +244,37 @@ export default function AddAccessoryModal({
               />
             </Grid>
 
+            {/* Initial Stock Units */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Initial Stock Units (optional)"
+                placeholder="e.g. 50"
+                type="number"
+                value={initialStock}
+                onChange={(e) => setInitialStock(e.target.value)}
+                slotProps={{
+                  htmlInput: { min: 0, step: 1 },
+                }}
+                sx={{ backgroundColor: "#ffffff" }}
+              />
+            </Grid>
+
             {/* Stock Switch */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <Box sx={{ height: "100%", display: "flex", alignItems: "center", pl: 1 }}>
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={inStock}
+                      checked={inStock || (Boolean(initialStock) && Number(initialStock) > 0)}
                       onChange={(e) => setInStock(e.target.checked)}
                       color="primary"
                     />
                   }
                   label={
-                    <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: inStock ? "#10b981" : "#64748b" }}>
-                      {inStock ? "Available in Stock" : "Out of Stock"}
+                    <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: inStock || (Boolean(initialStock) && Number(initialStock) > 0) ? "#10b981" : "#64748b" }}>
+                      {inStock || (Boolean(initialStock) && Number(initialStock) > 0) ? "Available in Stock" : "Out of Stock"}
                     </Typography>
                   }
                 />

@@ -29,6 +29,9 @@ import {
   IconButton,
   Stack,
   Divider,
+  Tooltip,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
@@ -38,11 +41,18 @@ import SearchIcon from "@mui/icons-material/Search";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import AddIcon from "@mui/icons-material/Add";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import BlockIcon from "@mui/icons-material/Block";
+import WarehouseIcon from "@mui/icons-material/Warehouse";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useAccessories, Accessory, categoryLabels } from "@/hooks/useAccessories";
+import { useAccessories, Accessory, AccessoryStockItem, categoryLabels } from "@/hooks/useAccessories";
 import { useCart } from "@/context/cart-context";
 import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
 import AddAccessoryModal from "@/components/accessories/AddAccessoryModal";
+import AccessoryStockModal from "@/components/accessories/AccessoryStockModal";
+import { useAuth } from "@/context/auth-context";
 
 type CategoryType = keyof typeof categoryLabels | "all";
 
@@ -55,17 +65,45 @@ type AccessorySelection = {
 
 export default function AccessoriesPage() {
   const { addToCart } = useCart();
-  const { accessories, loading, addAccessory } = useAccessories();
+  const { isOwner } = useAuth();
+  const {
+    accessories,
+    loading,
+    addAccessory,
+    updateAccessory,
+    deleteAccessory,
+    addAccessoryStock,
+    deleteAccessoryStock,
+    getTotalStock,
+  } = useAccessories();
+
   const [activeCategory, setActiveCategory] = useState<CategoryType>("all");
   const [selectedAccessory, setSelectedAccessory] = useState<AccessorySelection | null>(null);
   const [enteredPrice, setEnteredPrice] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Stock modal
+  const [stockModalAccessory, setStockModalAccessory] = useState<Accessory | null>(null);
+
+  // Edit/delete for owners
+  const [editingAccessory, setEditingAccessory] = useState<Accessory | null>(null);
+  const [deleteConfirmAccessory, setDeleteConfirmAccessory] = useState<Accessory | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters State
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [stockFilter, setStockFilter] = useState<"all" | "in-stock" | "out-of-stock">("all");
   const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "name-asc">("default");
+
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info" | "warning";
+  }>({ open: false, message: "", severity: "success" });
+
+  const showToast = (message: string, severity: "success" | "error" | "info" | "warning" = "success") =>
+    setToast({ open: true, message, severity });
 
   const categories: (keyof typeof categoryLabels)[] = [
     "charging-docks",
@@ -83,23 +121,18 @@ export default function AccessoriesPage() {
   // Filtering Logic
   const filteredProducts = accessories
     .filter((product) => {
-      // Category filter
       const categoryMatch = activeCategory === "all" || product.category === activeCategory;
-      // Search match
       const searchLower = searchTerm.toLowerCase();
       const searchMatch =
         !searchTerm ||
         product.name.toLowerCase().includes(searchLower) ||
         product.brand.toLowerCase().includes(searchLower) ||
         (product.specifications && product.specifications.toLowerCase().includes(searchLower));
-      // Brand filter
       const brandMatch = selectedBrand === "all" || product.brand === selectedBrand;
-      // Stock filter
       const stockMatch =
         stockFilter === "all" ||
         (stockFilter === "in-stock" && product.inStock) ||
         (stockFilter === "out-of-stock" && !product.inStock);
-
       return categoryMatch && searchMatch && brandMatch && stockMatch;
     })
     .sort((a, b) => {
@@ -121,26 +154,57 @@ export default function AccessoriesPage() {
 
   const handleAddToCart = () => {
     if (!selectedAccessory) return;
-
     const priceValue = Number(enteredPrice);
     if (!Number.isFinite(priceValue) || priceValue <= 0) return;
-
     addToCart({
       brand: selectedAccessory.brand,
       model: selectedAccessory.name,
       storage: selectedAccessory.specifications,
       price: priceValue,
     });
-
     setSelectedAccessory(null);
     setEnteredPrice("");
   };
 
   const handleAddAccessory = async (newAccessoryData: Omit<Accessory, "id">) => {
+    if (!isOwner) return;
     await addAccessory(newAccessoryData);
     if (activeCategory !== "all" && activeCategory !== newAccessoryData.category) {
       setActiveCategory(newAccessoryData.category);
     }
+    showToast("Accessory added successfully!");
+  };
+
+  const handleDeleteAccessory = async () => {
+    if (!deleteConfirmAccessory?.id || !isOwner) return;
+    try {
+      setIsDeleting(true);
+      await deleteAccessory(deleteConfirmAccessory.id);
+      setDeleteConfirmAccessory(null);
+      showToast("Accessory deleted.");
+    } catch {
+      showToast("Failed to delete accessory.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleAddStock = async (
+    accessoryId: string,
+    stockData:
+      | Omit<AccessoryStockItem, "id" | "createdAt">
+      | Omit<AccessoryStockItem, "id" | "createdAt">[]
+  ) => {
+    if (!isOwner) return;
+    await addAccessoryStock(accessoryId, stockData);
+    const count = Array.isArray(stockData) ? stockData.length : 1;
+    showToast(count > 1 ? `${count} stock entries added!` : "Stock entry added!");
+  };
+
+  const handleDeleteStock = async (accessoryId: string, stockId: string) => {
+    if (!isOwner) return;
+    await deleteAccessoryStock(accessoryId, stockId);
+    showToast("Stock entry removed.");
   };
 
   const handleResetFilters = () => {
@@ -186,6 +250,20 @@ export default function AccessoriesPage() {
                 <HeadphonesIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
                 Accessories Store
               </Typography>
+              {!isOwner && (
+                <Chip
+                  icon={<BlockIcon sx={{ fontSize: "14px !important" }} />}
+                  label="View & Cart Only"
+                  size="small"
+                  sx={{
+                    backgroundColor: "#fff7ed",
+                    color: "#ea580c",
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    border: "1px solid #fed7aa",
+                  }}
+                />
+              )}
             </Box>
             <CartButton />
           </Toolbar>
@@ -277,29 +355,31 @@ export default function AccessoriesPage() {
                     Reset Filters
                   </Button>
                 )}
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => setIsAddModalOpen(true)}
-                  sx={{
-                    background: "linear-gradient(135deg, #7c3aed, #ea580c)",
-                    fontWeight: 700,
-                    fontSize: "0.85rem",
-                    textTransform: "none",
-                    borderRadius: 2,
-                    px: 2.2,
-                    py: 0.8,
-                    boxShadow: "0 4px 14px rgba(124, 58, 237, 0.25)",
-                    "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
-                  }}
-                >
-                  Add Accessory
-                </Button>
+                {/* Only owners can add accessories */}
+                {isOwner && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setIsAddModalOpen(true)}
+                    sx={{
+                      background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      textTransform: "none",
+                      borderRadius: 2,
+                      px: 2.2,
+                      py: 0.8,
+                      boxShadow: "0 4px 14px rgba(124, 58, 237, 0.25)",
+                      "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
+                    }}
+                  >
+                    Add Accessory
+                  </Button>
+                )}
               </Box>
             </Box>
 
             <Grid container spacing={2}>
-              {/* Search Bar */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   fullWidth
@@ -320,7 +400,6 @@ export default function AccessoriesPage() {
                 />
               </Grid>
 
-              {/* Brand Filter */}
               <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Brand</InputLabel>
@@ -339,7 +418,6 @@ export default function AccessoriesPage() {
                 </FormControl>
               </Grid>
 
-              {/* Stock Status Filter */}
               <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Availability</InputLabel>
@@ -355,7 +433,6 @@ export default function AccessoriesPage() {
                 </FormControl>
               </Grid>
 
-              {/* Sort By */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Sort By</InputLabel>
@@ -402,127 +479,186 @@ export default function AccessoriesPage() {
           {/* Products Grid */}
           {!loading && (
             <Grid container spacing={3}>
-              {filteredProducts.map((product) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
-                <Card
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    transition: "all 0.25s ease",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 2,
-                    backgroundColor: "#ffffff",
-                    "&:hover": {
-                      transform: "translateY(-6px)",
-                      boxShadow: "0 12px 24px rgba(124, 58, 237, 0.12)",
-                      borderColor: "#7c3aed",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ flex: 1, p: 2.5, pb: 1.5 }}>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                      <Chip
-                        label={categoryLabels[product.category] || product.category}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#f5f3ff",
-                          color: "#7c3aed",
-                          fontWeight: 700,
-                          fontSize: "0.68rem",
-                          border: "1px solid #ddd6fe",
-                        }}
-                      />
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        {product.inStock ? (
-                          <>
-                            <CheckCircleIcon sx={{ fontSize: 14, color: "#10b981" }} />
-                            <Typography variant="caption" sx={{ color: "#10b981", fontWeight: 700, fontSize: "0.7rem" }}>
-                              In Stock
-                            </Typography>
-                          </>
-                        ) : (
-                          <>
-                            <CancelIcon sx={{ fontSize: 14, color: "#ef4444" }} />
-                            <Typography variant="caption" sx={{ color: "#ef4444", fontWeight: 700, fontSize: "0.7rem" }}>
-                              Out of Stock
-                            </Typography>
-                          </>
+              {filteredProducts.map((product) => {
+                const productStockTotal = getTotalStock(product.id!);
+                return (
+                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
+                    <Card
+                      sx={{
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        transition: "all 0.25s ease",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 2,
+                        backgroundColor: "#ffffff",
+                        "&:hover": {
+                          transform: "translateY(-6px)",
+                          boxShadow: "0 12px 24px rgba(124, 58, 237, 0.12)",
+                          borderColor: "#7c3aed",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ flex: 1, p: 2.5, pb: 1.5 }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                          <Chip
+                            label={categoryLabels[product.category] || product.category}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#f5f3ff",
+                              color: "#7c3aed",
+                              fontWeight: 700,
+                              fontSize: "0.68rem",
+                              border: "1px solid #ddd6fe",
+                            }}
+                          />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            {product.inStock ? (
+                              <>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: "#10b981" }} />
+                                <Typography variant="caption" sx={{ color: "#10b981", fontWeight: 700, fontSize: "0.7rem" }}>
+                                  In Stock
+                                </Typography>
+                              </>
+                            ) : (
+                              <>
+                                <CancelIcon sx={{ fontSize: 14, color: "#ef4444" }} />
+                                <Typography variant="caption" sx={{ color: "#ef4444", fontWeight: 700, fontSize: "0.7rem" }}>
+                                  Out of Stock
+                                </Typography>
+                              </>
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            color: "#64748b",
+                            letterSpacing: "0.05em",
+                            display: "block",
+                          }}
+                        >
+                          {product.brand}
+                        </Typography>
+
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", mb: 1, minHeight: 48 }}>
+                          {product.name}
+                        </Typography>
+
+                        {product.specifications && (
+                          <Chip
+                            label={product.specifications}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              mb: 2,
+                              borderColor: "#cbd5e1",
+                              color: "#475569",
+                              fontWeight: 600,
+                              fontSize: "0.72rem",
+                            }}
+                          />
                         )}
-                      </Box>
-                    </Box>
 
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        color: "#64748b",
-                        letterSpacing: "0.05em",
-                        display: "block",
-                      }}
-                    >
-                      {product.brand}
-                    </Typography>
+                        {/* Stock count badge */}
+                        {productStockTotal > 0 && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                            <InventoryIcon sx={{ fontSize: 13, color: "#ea580c" }} />
+                            <Typography variant="caption" sx={{ color: "#ea580c", fontWeight: 700, fontSize: "0.7rem" }}>
+                              {productStockTotal} units in stock
+                            </Typography>
+                          </Box>
+                        )}
 
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", mb: 1, minHeight: 48 }}>
-                      {product.name}
-                    </Typography>
+                        <Box sx={{ mt: "auto", pt: 1, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+                            Retail Price
+                          </Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#7c3aed" }}>
+                            Rs. {product.price.toLocaleString("en-LK")}
+                          </Typography>
+                        </Box>
+                      </CardContent>
 
-                    {product.specifications && (
-                      <Chip
-                        label={product.specifications}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          mb: 2,
-                          borderColor: "#cbd5e1",
-                          color: "#475569",
-                          fontWeight: 600,
-                          fontSize: "0.72rem",
-                        }}
-                      />
-                    )}
+                      <CardActions sx={{ p: 2, pt: 0, flexDirection: "column", gap: 1 }}>
+                        {/* Add to Cart */}
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<AddShoppingCartIcon sx={{ fontSize: "1.05rem" }} />}
+                          onClick={() => handleOpenPriceDialog(product)}
+                          disabled={!product.inStock}
+                          sx={{
+                            background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+                            fontWeight: 700,
+                            py: 0.9,
+                            fontSize: "0.85rem",
+                            textTransform: "none",
+                            borderRadius: 1.5,
+                            boxShadow: "0 3px 8px rgba(124, 58, 237, 0.2)",
+                            "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
+                          }}
+                        >
+                          {product.inStock ? "Add to Cart" : "Unavailable"}
+                        </Button>
 
-                    <Box sx={{ mt: "auto", pt: 1, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                      <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-                        Retail Price
-                      </Typography>
-                      <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#7c3aed" }}>
-                        Rs. {product.price.toLocaleString("en-LK")}
-                      </Typography>
-                    </Box>
-                  </CardContent>
+                        {/* Owner-only actions row */}
+                        {isOwner && (
+                          <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
+                            {/* View/Add Stock */}
+                            <Tooltip title="Manage Stock">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<WarehouseIcon sx={{ fontSize: 15 }} />}
+                                onClick={() => setStockModalAccessory(product)}
+                                sx={{
+                                  flex: 1,
+                                  textTransform: "none",
+                                  fontWeight: 700,
+                                  fontSize: "0.75rem",
+                                  color: "#ea580c",
+                                  borderColor: "#ea580c",
+                                  borderRadius: 1.5,
+                                  py: 0.5,
+                                  "&:hover": { borderColor: "#c2410c", backgroundColor: "#fff7ed" },
+                                }}
+                              >
+                                Stock ({(product.stocks?.length || 0)})
+                              </Button>
+                            </Tooltip>
 
-                  <CardActions sx={{ p: 2, pt: 0 }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      startIcon={<AddShoppingCartIcon sx={{ fontSize: "1.05rem" }} />}
-                      onClick={() => handleOpenPriceDialog(product)}
-                      disabled={!product.inStock}
-                      sx={{
-                        background: "linear-gradient(135deg, #7c3aed, #ea580c)",
-                        fontWeight: 700,
-                        py: 0.9,
-                        fontSize: "0.85rem",
-                        textTransform: "none",
-                        borderRadius: 1.5,
-                        boxShadow: "0 3px 8px rgba(124, 58, 237, 0.2)",
-                        "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
-                      }}
-                    >
-                      {product.inStock ? "Add to Cart" : "Unavailable"}
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
+                            {/* Delete */}
+                            <Tooltip title="Delete accessory">
+                              <IconButton
+                                size="small"
+                                onClick={() => setDeleteConfirmAccessory(product)}
+                                sx={{
+                                  color: "#ef4444",
+                                  border: "1px solid #fecaca",
+                                  borderRadius: 1.5,
+                                  px: 1,
+                                  "&:hover": { backgroundColor: "#fef2f2", borderColor: "#ef4444" },
+                                }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        )}
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
 
-        {/* Empty State */}
-        {!loading && filteredProducts.length === 0 && (
+          {/* Empty State */}
+          {!loading && filteredProducts.length === 0 && (
             <Paper
               sx={{
                 p: 6,
@@ -537,20 +673,23 @@ export default function AccessoriesPage() {
                 No accessories found
               </Typography>
               <Typography color="textSecondary" sx={{ mb: 3, maxWidth: 400, mx: "auto", fontSize: "0.9rem" }}>
-                We couldn&apos;t find any items matching your active filter criteria. Try resetting filters or adding a new accessory.
+                We couldn&apos;t find any items matching your active filter criteria. Try resetting filters
+                {isOwner ? " or adding a new accessory." : "."}
               </Typography>
               <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
                 <Button variant="outlined" onClick={handleResetFilters} startIcon={<RestartAltIcon />}>
                   Clear Filters
                 </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => setIsAddModalOpen(true)}
-                  startIcon={<AddIcon />}
-                  sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
-                >
-                  Add New Accessory
-                </Button>
+                {isOwner && (
+                  <Button
+                    variant="contained"
+                    onClick={() => setIsAddModalOpen(true)}
+                    startIcon={<AddIcon />}
+                    sx={{ background: "linear-gradient(135deg, #7c3aed, #ea580c)" }}
+                  >
+                    Add New Accessory
+                  </Button>
+                )}
               </Box>
             </Paper>
           )}
@@ -613,13 +752,70 @@ export default function AccessoriesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Add Accessory Modal */}
-      <AddAccessoryModal
-        open={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddAccessory}
-        existingBrands={uniqueBrands}
+      {/* Delete Confirm Dialog — owners only */}
+      <Dialog open={Boolean(deleteConfirmAccessory)} onClose={() => setDeleteConfirmAccessory(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: "#ef4444" }}>Delete Accessory</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete{" "}
+            <strong>
+              {deleteConfirmAccessory?.brand} {deleteConfirmAccessory?.name}
+            </strong>
+            ? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDeleteConfirmAccessory(null)} sx={{ color: "#64748b", textTransform: "none", fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleDeleteAccessory}
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={18} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              backgroundColor: "#ef4444",
+              fontWeight: 700,
+              textTransform: "none",
+              "&:hover": { backgroundColor: "#dc2626" },
+            }}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Accessory Modal — owners only */}
+      {isOwner && (
+        <AddAccessoryModal
+          open={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={handleAddAccessory}
+          existingBrands={uniqueBrands}
+        />
+      )}
+
+      {/* Stock Modal */}
+      <AccessoryStockModal
+        open={Boolean(stockModalAccessory)}
+        onClose={() => setStockModalAccessory(null)}
+        accessory={stockModalAccessory}
+        onAddStock={handleAddStock}
+        onDeleteStock={handleDeleteStock}
+        isOwner={isOwner}
       />
+
+      {/* Toast */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity={toast.severity} sx={{ fontWeight: 700 }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
 
       <PersistentCart />
     </Box>

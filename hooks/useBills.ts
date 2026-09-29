@@ -13,7 +13,7 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, sanitizeFirestoreData } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 
 export interface BillItem {
@@ -60,14 +60,17 @@ export function useBills() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use ownerUid so shopkeepers see the same bills as the shop owner
+  const ownerUid = user?.ownerUid;
+
   useEffect(() => {
-    if (!user?.uid) {
+    if (!ownerUid) {
       setBills([]);
       setLoading(false);
       return;
     }
 
-    const ref = collection(db, "users", user.uid, "bills");
+    const ref = collection(db, "users", ownerUid, "bills");
     const q = query(ref, orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -91,23 +94,25 @@ export function useBills() {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [ownerUid]);
 
   const addBill = async (data: Omit<Bill, "firestoreId" | "createdAt">) => {
-    if (!user?.uid) return;
-    const ref = collection(db, "users", user.uid, "bills");
-    await addDoc(ref, { ...data, createdAt: serverTimestamp() });
+    if (!ownerUid) return;
+    const ref = collection(db, "users", ownerUid, "bills");
+    const sanitized = sanitizeFirestoreData(data);
+    await addDoc(ref, { ...sanitized, createdAt: serverTimestamp() });
   };
 
   const updateBill = async (firestoreId: string, data: Partial<Bill>) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "bills", firestoreId);
-    await updateDoc(ref, data as Record<string, unknown>);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "bills", firestoreId);
+    const sanitized = sanitizeFirestoreData(data);
+    await updateDoc(ref, sanitized as Record<string, unknown>);
   };
 
   const deleteBill = async (firestoreId: string) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "bills", firestoreId);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "bills", firestoreId);
     await deleteDoc(ref);
   };
 
