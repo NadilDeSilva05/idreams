@@ -181,7 +181,47 @@ const theme = createTheme({
   },
 });
 
-import { AuthProvider } from "@/context/auth-context";
+import { AuthProvider, useAuth } from "@/context/auth-context";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { CircularProgress, Box } from "@mui/material";
+
+const PUBLIC_PATHS = ["/signin", "/signup"];
+
+function AuthGuard({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !isPublic) {
+      router.replace("/signin");
+    }
+  }, [isLoading, isAuthenticated, isPublic, router]);
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+        }}
+      >
+        <CircularProgress sx={{ color: "#7c3aed" }} />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated && !isPublic) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -189,7 +229,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          {children}
+          <AuthGuard>{children}</AuthGuard>
         </AuthProvider>
       </ThemeProvider>
     </EmotionRootStyleRegistry>

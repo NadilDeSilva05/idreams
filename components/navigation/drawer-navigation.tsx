@@ -15,6 +15,8 @@ import {
   Divider,
   Avatar,
   Chip,
+  Tooltip,
+  Snackbar,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
@@ -24,12 +26,14 @@ import HomeRepairServiceRoundedIcon from "@mui/icons-material/HomeRepairServiceR
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
-import Tooltip from "@mui/material/Tooltip";
 import { useAuth } from "@/context/auth-context";
+
 
 const drawerWidth = 270;
 
@@ -70,11 +74,20 @@ const navSections: NavSection[] = [
 
 export function NavigationDrawer({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOwner } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleCopyStoreCode = () => {
+    if (user?.uid) {
+      navigator.clipboard.writeText(user.uid);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   // Hide drawer on authentication pages
@@ -133,7 +146,7 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
           />
         </Box>
 
-        {/* Shopkeeper Status indicator */}
+        {/* Role Status indicator */}
         <Box
           sx={{
             display: "inline-flex",
@@ -142,8 +155,8 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             px: 1.25,
             py: 0.4,
             borderRadius: 5,
-            backgroundColor: "#f5f3ff",
-            border: "1px solid #ddd6fe",
+            backgroundColor: user?.role === "ShopOwner" ? "#f5f3ff" : "#fff7ed",
+            border: `1px solid ${user?.role === "ShopOwner" ? "#ddd6fe" : "#fed7aa"}`,
           }}
         >
           <Box
@@ -151,8 +164,8 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              backgroundColor: "#7c3aed",
-              boxShadow: "0 0 0 2px rgba(124, 58, 237, 0.2)",
+              backgroundColor: user?.role === "ShopOwner" ? "#7c3aed" : "#ea580c",
+              boxShadow: user?.role === "ShopOwner" ? "0 0 0 2px rgba(124, 58, 237, 0.2)" : "0 0 0 2px rgba(234, 88, 12, 0.2)",
             }}
           />
           <Typography
@@ -160,11 +173,11 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             sx={{
               fontWeight: 800,
               fontSize: "0.68rem",
-              color: "#7c3aed",
+              color: user?.role === "ShopOwner" ? "#7c3aed" : "#ea580c",
               letterSpacing: "0.02em",
             }}
           >
-            Role: Shopkeeper
+            Role: {user?.role === "ShopOwner" ? "Shop Owner" : "Shopkeeper"}
           </Typography>
         </Box>
       </Box>
@@ -346,9 +359,65 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             </IconButton>
           </Tooltip>
         </Box>
+
+        {/* Store Code — only visible to Shop Owner */}
+        {isOwner && (
+          <Box
+            sx={{
+              mt: 1.25,
+              p: 1.25,
+              borderRadius: 2,
+              backgroundColor: "#f5f3ff",
+              border: "1px dashed #c4b5fd",
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "0.65rem", display: "block", mb: 0.5 }}
+            >
+              YOUR STORE CODE
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  flex: 1,
+                  fontSize: "0.65rem",
+                  color: "#4c1d95",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                  lineHeight: 1.4,
+                }}
+              >
+                {user?.uid}
+              </Typography>
+              <Tooltip title={copied ? "Copied!" : "Copy Store Code"}>
+                <IconButton
+                  size="small"
+                  onClick={handleCopyStoreCode}
+                  sx={{
+                    p: 0.5,
+                    color: copied ? "#16a34a" : "#7c3aed",
+                    backgroundColor: copied ? "#dcfce7" : "#ede9fe",
+                    "&:hover": { backgroundColor: copied ? "#bbf7d0" : "#ddd6fe" },
+                    flexShrink: 0,
+                  }}
+                >
+                  {copied
+                    ? <CheckRoundedIcon sx={{ fontSize: 14 }} />
+                    : <ContentCopyRoundedIcon sx={{ fontSize: 14 }} />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="caption" sx={{ color: "#7c3aed", fontSize: "0.62rem", mt: 0.5, display: "block", opacity: 0.7 }}>
+              Share this with shopkeepers to link them to your store.
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Box>
   );
+
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -457,6 +526,12 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
         {/* Page Content */}
         <Box sx={{ flex: 1, width: "100%" }}>{children}</Box>
       </Box>
+      <Snackbar
+        open={copied}
+        autoHideDuration={2000}
+        message="Store Code copied to clipboard!"
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
     </Box>
   );
 }

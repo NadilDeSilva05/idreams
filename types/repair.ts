@@ -10,6 +10,7 @@ export interface Repair {
   status: "pending" | "in-progress" | "completed";
   customerName?: string;
   customerPhone?: string;
+  customerWhatsapp?: string;
   notes?: string;
 }
 

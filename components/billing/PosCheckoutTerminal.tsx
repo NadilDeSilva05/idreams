@@ -53,19 +53,22 @@ export default function PosCheckoutTerminal({
   // Line items in current transaction (starts empty or converted from cart)
   const [lineItems, setLineItems] = useState<BillItem[]>(() => {
     if (cartItems.length > 0) {
-      return cartItems.map((item) => ({
-        name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
-        qty: item.quantity,
-        price: item.price,
-        warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
-        smartphoneId: item.smartphoneId,
-        stockItemId: item.stockItemId,
-        imei: item.imei,
-        type: item.type,
-        brand: item.brand,
-        model: item.model,
-        storage: item.storage,
-      }));
+      return cartItems.map((item) => {
+        const lineItem: BillItem = {
+          name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
+          qty: item.quantity,
+          price: item.price,
+          warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
+        };
+        if (item.smartphoneId) lineItem.smartphoneId = item.smartphoneId;
+        if (item.stockItemId) lineItem.stockItemId = item.stockItemId;
+        if (item.imei) lineItem.imei = item.imei;
+        if (item.type) lineItem.type = item.type;
+        if (item.brand) lineItem.brand = item.brand;
+        if (item.model) lineItem.model = item.model;
+        if (item.storage) lineItem.storage = item.storage;
+        return lineItem;
+      });
     }
     return [];
   });
@@ -87,19 +90,22 @@ export default function PosCheckoutTerminal({
   // Import from cart
   const handleLoadFromCart = () => {
     if (cartItems.length === 0) return;
-    const convertedItems: BillItem[] = cartItems.map((item) => ({
-      name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
-      qty: item.quantity,
-      price: item.price,
-      warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
-      smartphoneId: item.smartphoneId,
-      stockItemId: item.stockItemId,
-      imei: item.imei,
-      type: item.type,
-      brand: item.brand,
-      model: item.model,
-      storage: item.storage,
-    }));
+    const convertedItems: BillItem[] = cartItems.map((item) => {
+      const lineItem: BillItem = {
+        name: `${item.brand} ${item.model}${item.storage ? ` (${item.storage})` : ""}${item.imei ? ` • IMEI: ${item.imei}` : ""}`,
+        qty: item.quantity,
+        price: item.price,
+        warranty: item.brand === "Apple" || item.brand === "Samsung" ? "1 Year Official" : "6 Months",
+      };
+      if (item.smartphoneId) lineItem.smartphoneId = item.smartphoneId;
+      if (item.stockItemId) lineItem.stockItemId = item.stockItemId;
+      if (item.imei) lineItem.imei = item.imei;
+      if (item.type) lineItem.type = item.type;
+      if (item.brand) lineItem.brand = item.brand;
+      if (item.model) lineItem.model = item.model;
+      if (item.storage) lineItem.storage = item.storage;
+      return lineItem;
+    });
     setLineItems(convertedItems);
   };
 
@@ -118,7 +124,7 @@ export default function PosCheckoutTerminal({
       name: customItemName.trim(),
       price: Number(customItemPrice),
       qty: Math.max(1, Number(customItemQty) || 1),
-      warranty: customItemWarranty.trim() || undefined,
+      ...(customItemWarranty.trim() ? { warranty: customItemWarranty.trim() } : {}),
     };
     setLineItems([...lineItems, newItem]);
     setCustomItemName("");

@@ -13,7 +13,7 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, sanitizeFirestoreData } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 
 export interface Repair {
@@ -28,6 +28,7 @@ export interface Repair {
   status: "pending" | "in-progress" | "completed";
   customerName?: string;
   customerPhone?: string;
+  customerWhatsapp?: string;
   notes?: string;
 }
 
@@ -37,14 +38,17 @@ export function useRepairs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use ownerUid so shopkeepers see the same repairs as the shop owner
+  const ownerUid = user?.ownerUid;
+
   useEffect(() => {
-    if (!user?.uid) {
+    if (!ownerUid) {
       setRepairs([]);
       setLoading(false);
       return;
     }
 
-    const ref = collection(db, "users", user.uid, "repairs");
+    const ref = collection(db, "users", ownerUid, "repairs");
     const q = query(ref, orderBy("dateCreated", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -73,26 +77,28 @@ export function useRepairs() {
     );
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [ownerUid]);
 
   const addRepair = async (data: Omit<Repair, "id">) => {
-    if (!user?.uid) return;
-    const ref = collection(db, "users", user.uid, "repairs");
+    if (!ownerUid) return;
+    const ref = collection(db, "users", ownerUid, "repairs");
+    const sanitized = sanitizeFirestoreData(data);
     await addDoc(ref, {
-      ...data,
+      ...sanitized,
       dateCreated: serverTimestamp(),
     });
   };
 
   const updateRepair = async (id: string, data: Partial<Repair>) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "repairs", id);
-    await updateDoc(ref, data as Record<string, unknown>);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "repairs", id);
+    const sanitized = sanitizeFirestoreData(data);
+    await updateDoc(ref, sanitized as Record<string, unknown>);
   };
 
   const deleteRepair = async (id: string) => {
-    if (!user?.uid) return;
-    const ref = doc(db, "users", user.uid, "repairs", id);
+    if (!ownerUid) return;
+    const ref = doc(db, "users", ownerUid, "repairs", id);
     await deleteDoc(ref);
   };
 

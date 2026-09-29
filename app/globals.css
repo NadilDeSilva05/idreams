@@ -233,7 +233,11 @@ td:first-child { color: #111827; font-weight: 850; }
 }
 
 @media print {
-  /* Base print styles always apply */
+  @page {
+    size: auto;
+    margin: 6mm;
+  }
+
   html,
   body {
     background: #ffffff !important;
@@ -245,65 +249,66 @@ td:first-child { color: #111827; font-weight: 850; }
     color-adjust: exact !important;
   }
 
-  html,
-  body,
-  #__next {
-    visibility: visible !important;
-    display: block !important;
+  /* Ensure background colors, gradients, and borders are preserved exactly on print */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
-  /* ===== MODE A: Portal Print — aggressive hiding + portal reveal ===== */
-  body.printing-via-portal > * {
+  /* ===== Portal Print — eliminate all non-portal DOM trees to prevent phantom page breaks ===== */
+  body.printing-via-portal > *:not(.billing-print-portal) {
+    display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
     visibility: hidden !important;
   }
 
-  body.printing-via-portal #__next,
-  body.printing-via-portal .billing-print-portal,
-  body.printing-via-portal .billing-print-portal * {
+  body.printing-via-portal .billing-print-portal {
     visibility: visible !important;
     display: block !important;
-  }
-
-  body.printing-via-portal .billing-print-portal {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: static !important;
     width: 100% !important;
-    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
-    overflow: visible !important;
-    display: block !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  /* Clean up any inner interactive chrome inside the print copy */
+  /* Make all descendants inside the portal visible WITHOUT overriding their display type (flex/grid/etc.) */
+  body.printing-via-portal .billing-print-portal * {
+    visibility: visible !important;
+  }
+
+  /* Clean up interactive/preview chrome inside print copy */
+  .print-hidden,
   .billing-print-portal .print-hidden {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* Strip card/paper decorations when printing via portal */
-  .billing-print-portal .MuiCard-root,
-  .billing-print-portal .MuiPaper-root,
-  .billing-print-portal #printable-invoice,
-  .billing-print-portal #printable-thermal-receipt,
-  .billing-print-portal .MuiCardContent-root {
+  /* A4 Invoice print styling — single page guaranteed */
+  .billing-print-portal #printable-invoice {
     box-shadow: none !important;
-    border: none !important;
+    border: 1px solid #dcdbe6 !important;
     border-radius: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     background: #ffffff !important;
-    max-width: 100% !important;
+    max-width: 794px !important;
     width: 100% !important;
-  }
-
-  .billing-print-portal #printable-invoice > .MuiCardContent-root,
-  .billing-print-portal .MuiCardContent-root {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: hidden !important;
   }
 
   /* Thermal receipt: keep narrow and centered on paper */
@@ -311,13 +316,13 @@ td:first-child { color: #111827; font-weight: 850; }
     max-width: 320px !important;
     width: 320px !important;
     margin: 0 auto !important;
-  }
-
-  /* Preserve chip/badge colors */
-  .billing-print-portal .MuiChip-root,
-  .billing-print-portal [class*="MuiChip"] {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
+    box-shadow: none !important;
+    border: 1px dashed #94a3b8 !important;
+    border-radius: 0 !important;
+    background: #fffdfa !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

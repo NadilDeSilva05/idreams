@@ -17,13 +17,16 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
+export type UserRole = "ShopOwner" | "Shopkeeper";
+
 export interface ShopkeeperUser {
   uid: string;
+  ownerUid: string; // For ShopOwner: same as uid. For Shopkeeper: the owner's uid
   name: string;
   email: string;
   shopName: string;
   phone: string;
-  role: "Shopkeeper";
+  role: UserRole;
   createdAt: string;
 }
 
@@ -31,31 +34,38 @@ interface AuthContextType {
   user: ShopkeeperUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  isOwner: boolean;
+  isShopkeeper: boolean;
+  signIn: (email: string, password: string, roleOverride?: UserRole) => Promise<{ success: boolean; error?: string }>;
   signUp: (data: {
     name: string;
     email: string;
     password: string;
     shopName: string;
     phone: string;
+    role: UserRole;
+    ownerUid?: string; // Required for Shopkeeper role
   }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchUserProfile(firebaseUser: FirebaseUser): Promise<ShopkeeperUser | null> {
+async function fetchUserProfile(firebaseUser: FirebaseUser): Promise<ShopkeeperUser> {
   const profileRef = doc(db, "users", firebaseUser.uid, "profile", "info");
   const snap = await getDoc(profileRef);
-  if (!snap.exists()) return null;
-  const data = snap.data();
+  const data = snap.exists() ? snap.data() : {};
+  const role = (data.role as UserRole) || "Shopkeeper";
+  // For ShopOwner, ownerUid is their own uid. For Shopkeeper, read stored ownerUid.
+  const ownerUid = role === "ShopOwner" ? firebaseUser.uid : (data.ownerUid || firebaseUser.uid);
   return {
     uid: firebaseUser.uid,
-    name: data.name || "",
+    ownerUid,
+    name: data.name || firebaseUser.displayName || "Shop Manager",
     email: firebaseUser.email || "",
-    shopName: data.shopName || "",
+    shopName: data.shopName || "iDreams Store",
     phone: data.phone || "",
-    role: "Shopkeeper",
+    role,
     createdAt: data.createdAt || new Date().toISOString().slice(0, 10),
   };
 }
@@ -78,10 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, roleOverride?: UserRole) => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const profile = await fetchUserProfile(cred.user);
+      let profile = await fetchUserProfile(cred.user);
+      if (roleOverride && profile.role !== roleOverride) {
+        profile = { ...profile, role: roleOverride };
+        const profileRef = doc(db, "users", cred.user.uid, "profile", "info");
+        await setDoc(profileRef, { role: roleOverride }, { merge: true });
+      }
       setUser(profile);
       return { success: true };
     } catch (err: unknown) {
@@ -103,28 +118,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     shopName: string;
     phone: string;
+    role: UserRole;
+    ownerUid?: string;
   }) => {
     try {
+      // If Shopkeeper, verify the ownerUid format and check profile if accessible
+      if (data.role === "Shopkeeper") {
+        if (!data.ownerUid?.trim()) {
+          return { success: false, error: "A Store Code is required for Shopkeeper accounts." };
+        }
+        try {
+          const ownerProfileRef = doc(db, "users", data.ownerUid.trim(), "profile", "info");
+          const ownerSnap = await getDoc(ownerProfileRef);
+          if (ownerSnap.exists()) {
+            const ownerData = ownerSnap.data();
+            if (ownerData.role && ownerData.role !== "ShopOwner") {
+              return { success: false, error: "The provided Store Code does not belong to a Shop Owner." };
+            }
+          }
+        } catch (readErr: unknown) {
+          // If Firestore security rules restrict unauthenticated cross-user reads, proceed with signup
+          console.warn("Could not pre-fetch owner profile (handled gracefully):", readErr);
+        }
+      }
+
       const cred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
       const uid = cred.user.uid;
+      const ownerUid = data.role === "ShopOwner" ? uid : data.ownerUid!.trim();
 
-      // Write the shopkeeper profile to Firestore
+      // Write the user profile to Firestore with role and ownerUid
       const profileRef = doc(db, "users", uid, "profile", "info");
       await setDoc(profileRef, {
         name: data.name.trim(),
         shopName: data.shopName.trim(),
         phone: data.phone.trim(),
-        role: "Shopkeeper",
+        role: data.role,
+        ownerUid,
         createdAt: serverTimestamp(),
       });
 
       const newUser: ShopkeeperUser = {
         uid,
+        ownerUid,
         name: data.name.trim(),
         email: data.email.trim(),
         shopName: data.shopName.trim(),
         phone: data.phone.trim(),
-        role: "Shopkeeper",
+        role: data.role,
         createdAt: new Date().toISOString().slice(0, 10),
       };
       setUser(newUser);
@@ -149,12 +189,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/signin");
   };
 
+  const isOwner = user?.role === "ShopOwner";
+  const isShopkeeper = user?.role === "Shopkeeper";
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: Boolean(user),
         isLoading,
+        isOwner,
+        isShopkeeper,
         signIn,
         signUp,
         signOut,

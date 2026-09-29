@@ -15,11 +15,15 @@ import {
   Box,
   Stack,
   Autocomplete,
+  Typography,
+  InputAdornment,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
 import LaptopMacIcon from "@mui/icons-material/LaptopMac";
+import PersonIcon from "@mui/icons-material/Person";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { Repair } from "@/types/repair";
 import { phoneModels } from "@/data/phoneData";
 
@@ -38,6 +42,8 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
   const [repairType, setRepairType] = useState("");
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState<"pending" | "in-progress" | "completed">("pending");
+  const [customerName, setCustomerName] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
 
   const availableModels = phoneModels.filter((p) => !brand || p.brand === brand);
   const selectedPhoneModel = phoneModels.find((p) => p.model === model);
@@ -52,6 +58,8 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
       setRepairType(initialData.repairType);
       setPrice(initialData.price.toString());
       setStatus(initialData.status);
+      setCustomerName(initialData.customerName || "");
+      setCustomerWhatsapp(initialData.customerWhatsapp || initialData.customerPhone || "");
     } else {
       resetForm();
     }
@@ -65,6 +73,8 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
     setRepairType("");
     setPrice("");
     setStatus("pending");
+    setCustomerName("");
+    setCustomerWhatsapp("");
   };
 
   const handleSubmit = () => {
@@ -86,6 +96,9 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
       repairType,
       price: parseFloat(price),
       status,
+      customerName: customerName.trim() || undefined,
+      customerWhatsapp: customerWhatsapp.trim() || undefined,
+      customerPhone: customerWhatsapp.trim() || undefined,
     };
 
     onSubmit(repairData);
@@ -169,6 +182,70 @@ export default function AddRepairModal({ open, onClose, onSubmit, initialData }:
               placeholder="e.g., Dell XPS 13, MacBook Pro"
             />
           )}
+
+          {/* Customer Details */}
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              backgroundColor: "#f8fafc",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 800,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                display: "block",
+                mb: 1.5,
+              }}
+            >
+              Customer Details (For WhatsApp Alerts)
+            </Typography>
+            <Stack spacing={1.5}>
+              <TextField
+                label="Customer Name"
+                fullWidth
+                size="small"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="e.g., Kasun Perera"
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon sx={{ color: "#7c3aed", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+                sx={{ backgroundColor: "#ffffff" }}
+              />
+
+              <TextField
+                label="Customer WhatsApp Number"
+                fullWidth
+                size="small"
+                value={customerWhatsapp}
+                onChange={(e) => setCustomerWhatsapp(e.target.value)}
+                placeholder="e.g., 0771234567 or +94771234567"
+                helperText="A pickup alert can be sent to this WhatsApp number when the repair is completed."
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <WhatsAppIcon sx={{ color: "#25D366", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+                sx={{ backgroundColor: "#ffffff" }}
+              />
+            </Stack>
+          </Box>
 
           {/* Common fields */}
           <TextField

@@ -16,4 +16,34 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+/**
+ * Recursively strips undefined fields from an object so Firestore addDoc / updateDoc does not throw:
+ * "Function addDoc() called with invalid data. Unsupported field value: undefined"
+ */
+export function sanitizeFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .map((item) => sanitizeFirestoreData(item))
+      .filter((item) => item !== undefined) as unknown as T;
+  }
+  if (typeof data === "object") {
+    // Preserve instances of Date, Timestamp, FieldValue or other non-plain-object classes
+    if (data.constructor && data.constructor.name !== "Object" && data.constructor.name !== "") {
+      return data;
+    }
+    const clean: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        clean[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return clean as T;
+  }
+  return data;
+}
+
 export default app;

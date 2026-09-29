@@ -47,6 +47,7 @@ interface ViewStockModalProps {
   smartphone: GroupedSmartphone | null;
   onOpenAddStock: (smartphone: GroupedSmartphone) => void;
   onDeleteStock: (smartphoneId: string, stockId: string) => Promise<void>;
+  isOwner?: boolean;
 }
 
 export default function ViewStockModal({
@@ -55,6 +56,7 @@ export default function ViewStockModal({
   smartphone,
   onOpenAddStock,
   onDeleteStock,
+  isOwner = true,
 }: ViewStockModalProps) {
   const [activeCategoryTab, setActiveCategoryTab] = useState<"all" | "Brand New" | "Used">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,7 +129,7 @@ export default function ViewStockModal({
   };
 
   const handleConfirmDelete = async () => {
-    if (!smartphone?.id || !stockToDelete) return;
+    if (!smartphone?.id || !stockToDelete || !isOwner) return;
     try {
       setIsDeleting(true);
       await onDeleteStock(smartphone.id, stockToDelete.id);
@@ -391,23 +393,25 @@ export default function ViewStockModal({
               <Typography variant="body2" sx={{ color: "#64748b", mb: 3, maxWidth: 360, mx: "auto" }}>
                 There are currently no individual stock units added for this smartphone model.
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  onClose();
-                  onOpenAddStock(smartphone);
-                }}
-                sx={{
-                  background: "linear-gradient(135deg, #7c3aed, #ea580c)",
-                  fontWeight: 700,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3,
-                }}
-              >
-                Add First Stock Unit
-              </Button>
+              {isOwner && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    onClose();
+                    onOpenAddStock(smartphone);
+                  }}
+                  sx={{
+                    background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 3,
+                  }}
+                >
+                  Add First Stock Unit
+                </Button>
+              )}
             </Paper>
           ) : filteredStocks.length === 0 ? (
             <Paper
@@ -672,23 +676,25 @@ export default function ViewStockModal({
                                 </Box>
 
                                 {/* Right Side: Delete Action */}
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                  <Tooltip title="Remove stock unit">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => setStockToDelete(stockItem)}
-                                      sx={{
-                                        color: "#94a3b8",
-                                        "&:hover": {
-                                          color: "#ef4444",
-                                          backgroundColor: "#fef2f2",
-                                        },
-                                      }}
-                                    >
-                                      <DeleteIcon sx={{ fontSize: 19 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Box>
+                                {isOwner && (
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                    <Tooltip title="Remove stock unit">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => setStockToDelete(stockItem)}
+                                        sx={{
+                                          color: "#94a3b8",
+                                          "&:hover": {
+                                            color: "#ef4444",
+                                            backgroundColor: "#fef2f2",
+                                          },
+                                        }}
+                                      >
+                                        <DeleteIcon sx={{ fontSize: 19 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
+                                )}
                               </Box>
                             </Paper>
                           );

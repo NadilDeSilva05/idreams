@@ -52,8 +52,8 @@ export default function AddSmartphoneModal({
   const [model, setModel] = useState("");
   const [category, setCategory] = useState<"flagship" | "mid-range" | "budget">("flagship");
   const [variants, setVariants] = useState<Array<{ storage: string; price: string }>>([
-    { storage: "128GB", price: "220000" },
-    { storage: "256GB", price: "260000" },
+    { storage: "128GB", price: "" },
+    { storage: "256GB", price: "" },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -76,8 +76,8 @@ export default function AddSmartphoneModal({
       setModel("");
       setCategory("flagship");
       setVariants([
-        { storage: "128GB", price: "220000" },
-        { storage: "256GB", price: "260000" },
+        { storage: "128GB", price: "" },
+        { storage: "256GB", price: "" },
       ]);
     }
     setErrors({});
@@ -99,8 +99,8 @@ export default function AddSmartphoneModal({
       setModel("");
       setCategory("flagship");
       setVariants([
-        { storage: "128GB", price: "220000" },
-        { storage: "256GB", price: "260000" },
+        { storage: "128GB", price: "" },
+        { storage: "256GB", price: "" },
       ]);
     }
     setErrors({});
@@ -111,8 +111,42 @@ export default function AddSmartphoneModal({
     onClose();
   };
 
+  const STORAGE_PRESETS = ["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"];
+
+  const getStorageWeight = (s: string) => {
+    const match = s.match(/(\d+)\s*(GB|TB)/i);
+    if (!match) return 9999;
+    const num = parseInt(match[1], 10);
+    const unit = match[2].toUpperCase();
+    return unit === "TB" ? num * 1024 : num;
+  };
+
+  const sortVariants = (vars: Array<{ storage: string; price: string }>) => {
+    return [...vars].sort((a, b) => getStorageWeight(a.storage) - getStorageWeight(b.storage));
+  };
+
   const handleAddVariantRow = () => {
-    setVariants([...variants, { storage: "512GB", price: "" }]);
+    setVariants([...variants, { storage: "", price: "" }]);
+  };
+
+  const handleToggleStorage = (storage: string) => {
+    const existingIndex = variants.findIndex(
+      (v) => v.storage.trim().toLowerCase() === storage.toLowerCase()
+    );
+    if (existingIndex !== -1) {
+      if (variants.length > 1) {
+        setVariants(variants.filter((_, idx) => idx !== existingIndex));
+      }
+    } else {
+      const emptyIndex = variants.findIndex((v) => !v.storage.trim());
+      let nextVars: Array<{ storage: string; price: string }>;
+      if (emptyIndex !== -1) {
+        nextVars = variants.map((v, i) => (i === emptyIndex ? { ...v, storage } : v));
+      } else {
+        nextVars = [...variants, { storage, price: "" }];
+      }
+      setVariants(sortVariants(nextVars));
+    }
   };
 
   const handleRemoveVariantRow = (index: number) => {
@@ -219,13 +253,11 @@ export default function AddSmartphoneModal({
                       {b}
                     </MenuItem>
                   ))}
+                  {!isEditing && <Divider key="brand-divider" sx={{ my: 0.5 }} />}
                   {!isEditing && (
-                    <>
-                      <Divider sx={{ my: 0.5 }} />
-                      <MenuItem value="__new_brand__" sx={{ color: "#7c3aed", fontWeight: 700 }}>
-                        + Add New Brand Catalog
-                      </MenuItem>
-                    </>
+                    <MenuItem key="brand-new" value="__new_brand__" sx={{ color: "#7c3aed", fontWeight: 700 }}>
+                      + Add New Brand Catalog
+                    </MenuItem>
                   )}
                 </Select>
               </FormControl>
@@ -251,21 +283,74 @@ export default function AddSmartphoneModal({
 
             {/* Storage Variants Section */}
             <Grid size={{ xs: 12 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, mt: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  Storage Variants & Pricing (LKR)
-                </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1, mt: 1 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1e293b" }}>
+                    Storage Capacities & Retail Pricing (LKR) *
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    Click to select which capacities this model comes with (only selected ones will appear when adding stock)
+                  </Typography>
+                </Box>
                 <Button
                   size="small"
                   startIcon={<AddIcon />}
                   onClick={handleAddVariantRow}
-                  sx={{ textTransform: "none", fontWeight: 700, color: "#7c3aed" }}
+                  sx={{ textTransform: "none", fontWeight: 700, color: "#7c3aed", whiteSpace: "nowrap" }}
                 >
-                  Add Variant Row
+                  Custom Capacity
                 </Button>
               </Box>
 
+              {/* Storage Capacities Selector Chips */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  alignItems: "center",
+                  mb: 2,
+                  p: 1.5,
+                  backgroundColor: "#f8fafc",
+                  borderRadius: 2,
+                  border: "1px dashed #cbd5e1",
+                }}
+              >
+                <Typography variant="caption" sx={{ color: "#475569", fontWeight: 700, mr: 0.5 }}>
+                  Capacities:
+                </Typography>
+                {STORAGE_PRESETS.map((st) => {
+                  const isSelected = variants.some(
+                    (v) => v.storage.trim().toLowerCase() === st.toLowerCase()
+                  );
+                  return (
+                    <Chip
+                      key={st}
+                      label={st}
+                      clickable
+                      onClick={() => handleToggleStorage(st)}
+                      variant={isSelected ? "filled" : "outlined"}
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: "0.8rem",
+                        borderColor: isSelected ? "#7c3aed" : "#cbd5e1",
+                        borderWidth: isSelected ? 2 : 1,
+                        backgroundColor: isSelected ? "#7c3aed" : "#ffffff",
+                        color: isSelected ? "#ffffff" : "#475569",
+                        boxShadow: isSelected ? "0 2px 6px rgba(124, 58, 237, 0.25)" : "none",
+                        "&:hover": {
+                          backgroundColor: isSelected ? "#6d28d9" : "#ede9fe",
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+
               <Paper sx={{ p: 2, backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", display: "block", mb: 1.5 }}>
+                  Set Retail Price For Each Selected Capacity:
+                </Typography>
                 {variants.map((v, idx) => (
                   <Box
                     key={idx}
@@ -290,7 +375,7 @@ export default function AddSmartphoneModal({
                       size="small"
                       type="number"
                       label="Retail Price (LKR)"
-                      placeholder="e.g. 240000"
+                      placeholder="0"
                       value={v.price}
                       onChange={(e) => handleVariantChange(idx, "price", e.target.value)}
                       error={Boolean(errors[`variant_price_${idx}`])}

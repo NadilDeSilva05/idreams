@@ -22,6 +22,7 @@ import {
   Select,
   MenuItem,
   InputAdornment,
+  IconButton,
   Grid,
   Stack,
   Divider,
@@ -44,11 +45,16 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
 import LaptopMacIcon from "@mui/icons-material/LaptopMac";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import PersonIcon from "@mui/icons-material/Person";
 import { Repair } from "@/types/repair";
 import AddRepairModal from "@/components/repairs/AddRepairModal";
 import { useCart } from "@/context/cart-context";
 import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
 import { useRepairs } from "@/hooks/useRepairs";
+import { useAuth } from "@/context/auth-context";
+import { generatePickupMessage, getWhatsAppShareUrl } from "@/lib/whatsapp";
 import CircularProgress from "@mui/material/CircularProgress";
 
 const toTimestamp = (date: any): number => {
@@ -72,6 +78,7 @@ const formatDate = (date: any): string => {
 
 export default function RepairsPage() {
   const { addToCart } = useCart();
+  const { isOwner } = useAuth();
   const { repairs, loading, addRepair, updateRepair, deleteRepair } = useRepairs();
   const [openModal, setOpenModal] = useState(false);
   const [editingRepair, setEditingRepair] = useState<Repair | null>(null);
@@ -79,6 +86,10 @@ export default function RepairsPage() {
   // Add to cart modal state
   const [selectedRepairForCart, setSelectedRepairForCart] = useState<Repair | null>(null);
   const [repairCartPrice, setRepairCartPrice] = useState("");
+
+  // WhatsApp notification modal state
+  const [whatsAppModalRepair, setWhatsAppModalRepair] = useState<Repair | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,14 +106,29 @@ export default function RepairsPage() {
   const handleAddRepair = async (repairData: Omit<Repair, "id" | "dateCreated">) => {
     if (editingRepair?.id) {
       await updateRepair(editingRepair.id, repairData);
+      if (repairData.status === "completed" && (repairData.customerWhatsapp || repairData.customerPhone)) {
+        setWhatsAppModalRepair({ ...repairData, id: editingRepair.id, dateCreated: editingRepair.dateCreated });
+      }
       setEditingRepair(null);
     } else {
-      await addRepair({
+      const newRepair: Repair = {
         ...repairData,
         dateCreated: new Date(),
-      });
+      };
+      await addRepair(newRepair);
+      if (repairData.status === "completed" && (repairData.customerWhatsapp || repairData.customerPhone)) {
+        setWhatsAppModalRepair(newRepair);
+      }
     }
     setOpenModal(false);
+  };
+
+  const handleStatusChange = async (repair: Repair, newStatus: "pending" | "in-progress" | "completed") => {
+    if (!repair.id) return;
+    await updateRepair(repair.id, { status: newStatus });
+    if (newStatus === "completed" && (repair.customerWhatsapp || repair.customerPhone)) {
+      setWhatsAppModalRepair({ ...repair, status: newStatus });
+    }
   };
 
   const handleDeleteRepair = async (id?: string) => {
@@ -174,7 +200,10 @@ export default function RepairsPage() {
         (repair.id ? repair.id.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
         repair.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (repair.brand && repair.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        repair.repairType.toLowerCase().includes(searchTerm.toLowerCase());
+        repair.repairType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (repair.customerName && repair.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (repair.customerWhatsapp && repair.customerWhatsapp.includes(searchTerm)) ||
+        (repair.customerPhone && repair.customerPhone.includes(searchTerm));
 
       const matchesDevice = deviceTypeFilter === "all" || repair.deviceType === deviceTypeFilter;
       const matchesStatus = statusFilter === "all" || repair.status === statusFilter;
@@ -522,78 +551,250 @@ export default function RepairsPage() {
               </Button>
             </Paper>
           ) : (
-            <TableContainer
-              component={Paper}
-              sx={{
-                border: "1px solid #e2e8f0",
-                borderRadius: 2.5,
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-                overflow: "hidden",
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }}>Repair ID</TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }}>Model & Specs</TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }}>Repair Service</TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }} align="right">
-                      Price (LKR)
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.88rem" }} align="center">
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredRepairs.map((repair) => (
-                    <TableRow
-                      key={repair.id}
-                      hover
+            <Grid container spacing={2.5}>
+              {filteredRepairs.map((repair) => {
+                const isCompleted = repair.status === "completed";
+                const isInProgress = repair.status === "in-progress";
+                const statusBg = isCompleted ? "#dcfce7" : isInProgress ? "#fef3c7" : "#f1f5f9";
+                const statusText = isCompleted ? "#15803d" : isInProgress ? "#b45309" : "#475569";
+                const statusBorder = isCompleted ? "#86efac" : isInProgress ? "#fde68a" : "#cbd5e1";
+                const hasPhone = Boolean(repair.customerWhatsapp || repair.customerPhone);
+
+                return (
+                  <Grid key={repair.id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                    <Paper
+                      elevation={0}
                       sx={{
-                        "&:last-child td, &:last-child th": { border: 0 },
-                        transition: "background-color 0.15s ease",
+                        p: 2.5,
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        borderRadius: 3,
+                        backgroundColor: "#ffffff",
+                        border: "1.5px solid",
+                        borderColor: isCompleted ? "#bbf7d0" : "#e2e8f0",
+                        boxShadow: isCompleted
+                          ? "0 4px 18px rgba(34, 197, 94, 0.08)"
+                          : "0 4px 15px rgba(0, 0, 0, 0.03)",
+                        position: "relative",
+                        overflow: "hidden",
+                        transition: "all 0.2s ease-in-out",
+                        "&:hover": {
+                          transform: "translateY(-3px)",
+                          boxShadow: "0 12px 28px rgba(124, 58, 237, 0.09)",
+                          borderColor: isCompleted ? "#22c55e" : "#c4b5fd",
+                        },
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 700, color: "#7c3aed", fontFamily: "monospace", fontSize: "0.85rem" }}>
-                        {repair.id}
-                      </TableCell>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>
-                          {repair.brand && `${repair.brand} `}
-                          {repair.model}
-                        </Typography>
-                        {repair.storage && (
-                          <Chip
-                            label={repair.storage}
-                            size="small"
-                            variant="outlined"
-                            sx={{ height: 18, fontSize: "0.68rem", mt: 0.5 }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 500, color: "#334155" }}>{repair.repairType}</TableCell>
-                      <TableCell align="right">
-                        <Typography sx={{ fontWeight: 800, color: "#059669", fontSize: "0.92rem" }}>
-                          Rs. {repair.price.toLocaleString("en-LK")}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={repair.status.charAt(0).toUpperCase() + repair.status.slice(1)}
-                          size="small"
-                          color={getStatusChipColor(repair.status) as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                          sx={{ fontWeight: 700, fontSize: "0.75rem" }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                        {formatDate(repair.dateCreated)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} sx={{ justifyContent: "center" }}>
+                      {/* Top colored accent indicator line */}
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          backgroundColor: isCompleted ? "#22c55e" : isInProgress ? "#f59e0b" : "#94a3b8",
+                        }}
+                      />
+
+                      <Box>
+                        {/* Header: Ticket ID & Status Selector */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, mt: 0.5 }}>
+                          <Typography
+                            sx={{
+                              fontWeight: 800,
+                              color: "#7c3aed",
+                              fontFamily: "monospace",
+                              fontSize: "0.82rem",
+                              backgroundColor: "#f5f3ff",
+                              px: 1,
+                              py: 0.35,
+                              borderRadius: 1.5,
+                              border: "1px solid #ddd6fe",
+                            }}
+                          >
+                            {repair.id}
+                          </Typography>
+
+                          {/* Quick Status Dropdown */}
+                          <FormControl size="small" variant="standard">
+                            <Select
+                              value={repair.status}
+                              onChange={(e) => handleStatusChange(repair, e.target.value as any)}
+                              disableUnderline
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: "0.78rem",
+                                borderRadius: 2,
+                                px: 1.2,
+                                py: 0.35,
+                                border: `1px solid ${statusBorder}`,
+                                backgroundColor: statusBg,
+                                color: statusText,
+                                "& .MuiSelect-icon": { color: statusText },
+                              }}
+                            >
+                              <MenuItem value="pending" sx={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                                Pending
+                              </MenuItem>
+                              <MenuItem value="in-progress" sx={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                                In Progress
+                              </MenuItem>
+                              <MenuItem value="completed" sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#166534" }}>
+                                Completed ✓
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Box>
+
+                        {/* Device Info */}
+                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25, mb: 2 }}>
+                          <Box
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 2.5,
+                              backgroundColor: repair.deviceType === "smartphone" ? "#f5f3ff" : "#eff6ff",
+                              color: repair.deviceType === "smartphone" ? "#7c3aed" : "#2563eb",
+                              border: `1px solid ${repair.deviceType === "smartphone" ? "#ddd6fe" : "#bfdbfe"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {repair.deviceType === "smartphone" ? (
+                              <SmartphoneIcon sx={{ fontSize: 24 }} />
+                            ) : (
+                              <LaptopMacIcon sx={{ fontSize: 24 }} />
+                            )}
+                          </Box>
+
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.05rem", lineHeight: 1.25, mb: 0.5 }}>
+                              {repair.brand ? `${repair.brand} ` : ""}
+                              {repair.model}
+                            </Typography>
+                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                              {repair.storage && (
+                                <Chip
+                                  label={repair.storage}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ height: 20, fontSize: "0.7rem", fontWeight: 700, borderColor: "#cbd5e1" }}
+                                />
+                              )}
+                              <Chip
+                                label={repair.repairType}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: "0.7rem",
+                                  fontWeight: 700,
+                                  backgroundColor: "#f1f5f9",
+                                  color: "#334155",
+                                }}
+                              />
+                            </Stack>
+                          </Box>
+                        </Box>
+
+                        {/* Customer & WhatsApp Section */}
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            mb: 2,
+                            borderRadius: 2,
+                            backgroundColor: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.75 }}>
+                            <Typography
+                              sx={{
+                                fontWeight: 700,
+                                color: "#1e293b",
+                                fontSize: "0.88rem",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.75,
+                              }}
+                            >
+                              <PersonIcon sx={{ fontSize: 17, color: "#64748b" }} />
+                              {repair.customerName || "Walk-in Customer"}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#94a3b8", fontSize: "0.75rem" }}>
+                              {formatDate(repair.dateCreated)}
+                            </Typography>
+                          </Box>
+
+                          {hasPhone ? (
+                            <Chip
+                              icon={<WhatsAppIcon sx={{ fontSize: "15px !important", color: "#25D366 !important" }} />}
+                              label={repair.customerWhatsapp || repair.customerPhone}
+                              size="small"
+                              clickable
+                              onClick={() => setWhatsAppModalRepair(repair)}
+                              title="Click to send WhatsApp pickup message"
+                              sx={{
+                                height: 24,
+                                fontSize: "0.75rem",
+                                fontWeight: 800,
+                                fontFamily: "monospace",
+                                backgroundColor: "#f0fdf4",
+                                color: "#166534",
+                                border: "1px solid #bbf7d0",
+                                "&:hover": { backgroundColor: "#dcfce7" },
+                              }}
+                            />
+                          ) : (
+                            <Typography variant="caption" sx={{ color: "#94a3b8", fontStyle: "italic" }}>
+                              No WhatsApp number provided
+                            </Typography>
+                          )}
+                        </Box>
+
+                        {/* Price Badge */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 2 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                            Service Charge:
+                          </Typography>
+                          <Typography sx={{ fontWeight: 900, color: "#059669", fontSize: "1.2rem" }}>
+                            Rs. {repair.price.toLocaleString("en-LK")}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Action Buttons */}
+                      <Box sx={{ pt: 1.5, borderTop: "1px solid #f1f5f9" }}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                          {/* WhatsApp Button */}
                           <Button
+                            fullWidth
+                            size="small"
+                            variant="contained"
+                            startIcon={<WhatsAppIcon sx={{ fontSize: 16 }} />}
+                            onClick={() => setWhatsAppModalRepair(repair)}
+                            sx={{
+                              backgroundColor: "#25D366",
+                              color: "#ffffff",
+                              fontWeight: 700,
+                              textTransform: "none",
+                              fontSize: "0.78rem",
+                              py: 0.65,
+                              borderRadius: 1.5,
+                              boxShadow: "0 2px 6px rgba(37, 211, 102, 0.25)",
+                              "&:hover": { backgroundColor: "#1fad52" },
+                            }}
+                          >
+                            WhatsApp
+                          </Button>
+
+                          {/* Add to Cart Button */}
+                          <Button
+                            fullWidth
                             size="small"
                             variant="contained"
                             startIcon={<AddShoppingCartIcon sx={{ fontSize: 15 }} />}
@@ -602,57 +803,57 @@ export default function RepairsPage() {
                               background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                               fontWeight: 700,
                               textTransform: "none",
-                              fontSize: "0.75rem",
-                              py: 0.35,
-                              px: 1.25,
+                              fontSize: "0.78rem",
+                              py: 0.65,
                               borderRadius: 1.5,
                               boxShadow: "0 2px 6px rgba(124, 58, 237, 0.2)",
                               whiteSpace: "nowrap",
-                              "&:hover": {
-                                background: "linear-gradient(135deg, #6d28d9, #c2410c)",
-                              },
+                              "&:hover": { background: "linear-gradient(135deg, #6d28d9, #c2410c)" },
                             }}
                           >
-                            Add to Cart
+                            Cart
                           </Button>
-                          <Button
+
+                          {/* Edit Icon Button */}
+                          <IconButton
                             size="small"
-                            variant="outlined"
-                            startIcon={<EditIcon sx={{ fontSize: 14 }} />}
                             onClick={() => handleEditRepair(repair)}
+                            title="Edit Repair"
                             sx={{
-                              textTransform: "none",
-                              fontSize: "0.75rem",
-                              py: 0.25,
-                              px: 1,
+                              border: "1px solid #cbd5e1",
                               borderRadius: 1.5,
+                              color: "#475569",
+                              p: 0.7,
+                              "&:hover": { backgroundColor: "#f1f5f9", borderColor: "#94a3b8" },
                             }}
                           >
-                            Edit
-                          </Button>
-                          <Button
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+
+                          {/* Delete Icon Button — Owner only */}
+                          {isOwner && (
+                          <IconButton
                             size="small"
-                            variant="outlined"
-                            color="error"
-                            startIcon={<DeleteIcon sx={{ fontSize: 14 }} />}
                             onClick={() => handleDeleteRepair(repair.id)}
+                            title="Delete Repair"
                             sx={{
-                              textTransform: "none",
-                              fontSize: "0.75rem",
-                              py: 0.25,
-                              px: 1,
+                              border: "1px solid #fecaca",
                               borderRadius: 1.5,
+                              color: "#ef4444",
+                              p: 0.7,
+                              "&:hover": { backgroundColor: "#fee2e2", borderColor: "#f87171" },
                             }}
                           >
-                            Delete
-                          </Button>
+                            <DeleteIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          )}
                         </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
           )}
 
           <AddRepairModal
@@ -755,6 +956,178 @@ export default function RepairsPage() {
               >
                 Add to Cart
               </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* WhatsApp Pickup Notification Dialog */}
+          <Dialog
+            open={Boolean(whatsAppModalRepair)}
+            onClose={() => setWhatsAppModalRepair(null)}
+            maxWidth="sm"
+            fullWidth
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: 3,
+                  boxShadow: "0 20px 45px rgba(37, 211, 102, 0.22)",
+                },
+              },
+            }}
+          >
+            <DialogTitle
+              sx={{
+                fontWeight: 800,
+                fontSize: "1.15rem",
+                color: "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                borderBottom: "1px solid #e2e8f0",
+                pb: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  backgroundColor: "#25D366",
+                  color: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 10px rgba(37, 211, 102, 0.35)",
+                  flexShrink: 0,
+                }}
+              >
+                <WhatsAppIcon sx={{ fontSize: 24 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#1e293b", lineHeight: 1.2 }}>
+                  Device Ready — WhatsApp Pickup Alert
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#64748b" }}>
+                  Send a ready-for-pickup notice directly to the customer on WhatsApp
+                </Typography>
+              </Box>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 3 }}>
+              {whatsAppModalRepair && (
+                <Stack spacing={2.5}>
+                  {/* Customer and Contact Details Cards */}
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Paper sx={{ p: 1.75, backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, display: "block" }}>
+                          CUSTOMER NAME
+                        </Typography>
+                        <Typography sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.98rem" }}>
+                          {whatsAppModalRepair.customerName || "Customer"}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Paper sx={{ p: 1.75, backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, display: "block" }}>
+                          WHATSAPP NUMBER
+                        </Typography>
+                        <Typography sx={{ fontWeight: 800, color: "#059669", fontSize: "0.98rem", fontFamily: "monospace" }}>
+                          {whatsAppModalRepair.customerWhatsapp || whatsAppModalRepair.customerPhone || "No number provided"}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+
+                  {/* Device and Service Summary */}
+                  <Box sx={{ p: 1.5, backgroundColor: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 2 }}>
+                    <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, display: "block" }}>
+                      DEVICE & SERVICE
+                    </Typography>
+                    <Typography sx={{ fontWeight: 800, color: "#1e293b", fontSize: "0.95rem" }}>
+                      {whatsAppModalRepair.brand ? `${whatsAppModalRepair.brand} ` : ""}
+                      {whatsAppModalRepair.model} ({whatsAppModalRepair.repairType})
+                    </Typography>
+                  </Box>
+
+                  {/* Generated WhatsApp Message */}
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: "#475569", display: "block", mb: 0.75 }}>
+                      GENERATED MESSAGE:
+                    </Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        backgroundColor: "#f0fdf4",
+                        border: "1.5px solid #86efac",
+                        borderRadius: 2,
+                        position: "relative",
+                      }}
+                    >
+                      <Typography sx={{ color: "#166534", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.6 }}>
+                        "{generatePickupMessage(whatsAppModalRepair)}"
+                      </Typography>
+                    </Paper>
+                  </Box>
+
+                  {!(whatsAppModalRepair.customerWhatsapp || whatsAppModalRepair.customerPhone) && (
+                    <Typography variant="caption" sx={{ color: "#ef4444", fontWeight: 700 }}>
+                      ⚠️ No WhatsApp number was recorded for this ticket. You can edit the ticket to add the customer's phone number.
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", gap: 1 }}>
+              <Button
+                onClick={() => setWhatsAppModalRepair(null)}
+                variant="outlined"
+                sx={{ textTransform: "none", fontWeight: 600, color: "#64748b" }}
+              >
+                Close
+              </Button>
+
+              {whatsAppModalRepair && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => {
+                    const msg = generatePickupMessage(whatsAppModalRepair);
+                    navigator.clipboard.writeText(msg);
+                    setCopiedMessage(true);
+                    setTimeout(() => setCopiedMessage(false), 2500);
+                  }}
+                  sx={{ textTransform: "none", fontWeight: 700 }}
+                >
+                  {copiedMessage ? "Copied!" : "Copy Text"}
+                </Button>
+              )}
+
+              {whatsAppModalRepair && (whatsAppModalRepair.customerWhatsapp || whatsAppModalRepair.customerPhone) && (
+                <Button
+                  variant="contained"
+                  startIcon={<WhatsAppIcon />}
+                  onClick={() => {
+                    const phone = whatsAppModalRepair.customerWhatsapp || whatsAppModalRepair.customerPhone || "";
+                    const msg = generatePickupMessage(whatsAppModalRepair);
+                    const url = getWhatsAppShareUrl(phone, msg);
+                    window.open(url, "_blank");
+                  }}
+                  sx={{
+                    backgroundColor: "#25D366",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    px: 2.5,
+                    borderRadius: 2,
+                    boxShadow: "0 4px 12px rgba(37, 211, 102, 0.35)",
+                    "&:hover": {
+                      backgroundColor: "#1fad52",
+                    },
+                  }}
+                >
+                  Send via WhatsApp
+                </Button>
+              )}
             </DialogActions>
           </Dialog>
         </Container>
