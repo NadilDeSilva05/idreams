@@ -36,7 +36,9 @@ export interface SmartphoneStockItem {
 
 export interface SmartphoneStorageVariant {
   storage: string;
-  price: number;
+  price: number;       // retail price
+  costPrice?: number;  // cost / purchase price
+  lastSellingPrice?: number; // last recorded selling price (floor for add to cart)
 }
 
 export interface GroupedSmartphone {

@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db, sanitizeFirestoreData } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
+import { writeHistory } from "@/hooks/useHistory";
 
 export interface AccessoryStockItem {
   id: string;
@@ -101,20 +102,72 @@ export function useAccessories() {
     if (!ownerUid) return;
     const ref = collection(db, "users", ownerUid, "accessories");
     const sanitized = sanitizeFirestoreData(data);
-    await addDoc(ref, { ...sanitized, stocks: sanitized.stocks || [], createdAt: serverTimestamp() });
+    const docRef = await addDoc(ref, { ...sanitized, stocks: sanitized.stocks || [], createdAt: serverTimestamp() });
+    writeHistory(ownerUid, {
+      category: "accessory",
+      action: "create",
+      entityId: docRef.id,
+      entityLabel: data.name,
+      userUid: user?.uid,
+      userName: user?.name,
+      userRole: user?.role,
+      payload: {
+        name: data.name,
+        brand: data.brand,
+        category: data.category,
+        price: data.price,
+        specifications: data.specifications,
+      },
+    }).catch(() => {});
   };
 
   const updateAccessory = async (id: string, data: Partial<Accessory>) => {
     if (!ownerUid) return;
+    const existing = accessories.find((a) => a.id === id);
     const ref = doc(db, "users", ownerUid, "accessories", id);
     const sanitized = sanitizeFirestoreData(data);
     await updateDoc(ref, sanitized as Record<string, unknown>);
+    writeHistory(ownerUid, {
+      category: "accessory",
+      action: "update",
+      entityId: id,
+      entityLabel: existing?.name || data.name || id,
+      userUid: user?.uid,
+      userName: user?.name,
+      userRole: user?.role,
+      payload: {
+        name: data.name || existing?.name,
+        brand: data.brand || existing?.brand,
+        category: data.category,
+        price: data.price,
+        specifications: data.specifications,
+      },
+      oldValue: existing ? { name: existing.name, brand: existing.brand, category: existing.category, price: existing.price } : undefined,
+      newValue: { name: data.name, brand: data.brand, category: data.category, price: data.price },
+    }).catch(() => {});
   };
 
   const deleteAccessory = async (id: string) => {
     if (!ownerUid) return;
+    const existing = accessories.find((a) => a.id === id);
     const ref = doc(db, "users", ownerUid, "accessories", id);
     await deleteDoc(ref);
+    writeHistory(ownerUid, {
+      category: "accessory",
+      action: "delete",
+      entityId: id,
+      entityLabel: existing?.name || id,
+      userUid: user?.uid,
+      userName: user?.name,
+      userRole: user?.role,
+      payload: {
+        name: existing?.name,
+        brand: existing?.brand,
+        category: existing?.category,
+        price: existing?.price,
+        stockCount: existing?.stocks?.length || 0,
+      },
+    }).catch(() => {});
   };
 
   // Stock management for accessories (same pattern as smartphones)
@@ -135,9 +188,33 @@ export function useAccessories() {
         createdAt: new Date().toISOString(),
       };
     });
+    const accessory = accessories.find((a) => a.id === accessoryId);
     const ref = doc(db, "users", ownerUid, "accessories", accessoryId);
     await updateDoc(ref, {
       stocks: arrayUnion(...newStockItems),
+    });
+    newStockItems.forEach((stock, i) => {
+      writeHistory(ownerUid, {
+        category: "stock",
+        action: "stock_add",
+        entityId: stock.id,
+        entityLabel: accessory?.name || accessoryId,
+        userUid: user?.uid,
+        userName: user?.name,
+        userRole: user?.role,
+        payload: {
+          type: "accessory",
+          product: accessory?.name,
+          accessoryId,
+          category: accessory?.category,
+          qty: stock.quantity,
+          purchasePrice: stock.purchasePrice,
+          supplier: stock.supplier,
+          notes: stock.notes,
+          batch: i + 1,
+          batchSize: newStockItems.length,
+        },
+      }).catch(() => {});
     });
   };
 
@@ -146,9 +223,28 @@ export function useAccessories() {
     const accessory = accessories.find((a) => a.id === accessoryId);
     if (!accessory) return;
     const currentStocks = accessory.stocks || [];
+    const removed = currentStocks.find((s) => s.id === stockId);
     const updatedStocks = currentStocks.filter((s) => s.id !== stockId);
     const ref = doc(db, "users", ownerUid, "accessories", accessoryId);
     await updateDoc(ref, { stocks: updatedStocks });
+    writeHistory(ownerUid, {
+      category: "stock",
+      action: "stock_remove",
+      entityId: stockId,
+      entityLabel: accessory.name,
+      userUid: user?.uid,
+      userName: user?.name,
+      userRole: user?.role,
+      payload: {
+        type: "accessory",
+        product: accessory.name,
+        accessoryId,
+        category: accessory.category,
+        qty: removed?.quantity,
+        purchasePrice: removed?.purchasePrice,
+        supplier: removed?.supplier,
+      },
+    }).catch(() => {});
   };
 
   const updateAccessoryStock = async (

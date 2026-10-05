@@ -12,8 +12,6 @@ import {
   CardContent,
   CardActions,
   Chip,
-  AppBar,
-  Toolbar,
   Tabs,
   Tab,
   Dialog,
@@ -28,7 +26,6 @@ import {
   InputAdornment,
   IconButton,
   Stack,
-  Divider,
   Tooltip,
   Snackbar,
   Alert,
@@ -44,12 +41,11 @@ import AddIcon from "@mui/icons-material/Add";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import BlockIcon from "@mui/icons-material/Block";
 import WarehouseIcon from "@mui/icons-material/Warehouse";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useAccessories, Accessory, AccessoryStockItem, categoryLabels } from "@/hooks/useAccessories";
 import { useCart } from "@/context/cart-context";
-import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
+import { PersistentCart } from "@/components/cart/persistent-cart";
 import AddAccessoryModal from "@/components/accessories/AddAccessoryModal";
 import AccessoryStockModal from "@/components/accessories/AccessoryStockModal";
 import { useAuth } from "@/context/auth-context";
@@ -225,55 +221,11 @@ export default function AccessoriesPage() {
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f8fafc" }}>
       <Box sx={{ flex: 1, overflowY: "auto" }}>
-        <AppBar
-          position="sticky"
-          sx={{
-            backgroundColor: "#ffffff",
-            boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
-          }}
-        >
-          <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Box sx={{ height: 32, display: "flex", alignItems: "center" }}>
-                <img
-                  src="/Images/i Dreams.png"
-                  alt="iDreams Logo"
-                  style={{ height: "100%", objectFit: "contain" }}
-                />
-              </Box>
-              <Divider orientation="vertical" flexItem sx={{ height: 18, my: "auto" }} />
-              <Typography
-                variant="h6"
-                component="div"
-                sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 0.75 }}
-              >
-                <HeadphonesIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
-                Accessories Store
-              </Typography>
-              {!isOwner && (
-                <Chip
-                  icon={<BlockIcon sx={{ fontSize: "14px !important" }} />}
-                  label="View & Cart Only"
-                  size="small"
-                  sx={{
-                    backgroundColor: "#fff7ed",
-                    color: "#ea580c",
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    border: "1px solid #fed7aa",
-                  }}
-                />
-              )}
-            </Box>
-            <CartButton />
-          </Toolbar>
-        </AppBar>
-
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: 2.5 }}>
           {/* Category Tabs */}
           <Paper
             sx={{
-              mb: 3,
+              mb: 2,
               border: "1px solid #e2e8f0",
               borderRadius: 2,
               overflow: "hidden",
@@ -478,7 +430,7 @@ export default function AccessoriesPage() {
 
           {/* Products Grid */}
           {!loading && (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {filteredProducts.map((product) => {
                 const productStockTotal = getTotalStock(product.id!);
                 return (
@@ -554,7 +506,7 @@ export default function AccessoriesPage() {
                             size="small"
                             variant="outlined"
                             sx={{
-                              mb: 2,
+                              mb: 1.5,
                               borderColor: "#cbd5e1",
                               color: "#475569",
                               fontWeight: 600,
@@ -702,7 +654,7 @@ export default function AccessoriesPage() {
           Confirm Selling Price in LKR
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ p: 2, backgroundColor: "#f5f3ff", borderRadius: 2, mb: 3, border: "1px solid #ddd6fe" }}>
+          <Box sx={{ p: 1.5, backgroundColor: "#f5f3ff", borderRadius: 2, mb: 2, border: "1px solid #ddd6fe" }}>
             <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, textTransform: "uppercase" }}>
               {selectedAccessory?.brand}
             </Typography>

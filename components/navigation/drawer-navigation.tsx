@@ -18,21 +18,20 @@ import {
   Tooltip,
   Snackbar,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import HomeRepairServiceRoundedIcon from "@mui/icons-material/HomeRepairServiceRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useAuth } from "@/context/auth-context";
+import { SystemTopBar } from "@/components/layout/SystemTopBar";
 
 
 const drawerWidth = 270;
@@ -68,26 +67,19 @@ const navSections: NavSection[] = [
     items: [
       { label: "Repairs", icon: HomeRepairServiceRoundedIcon, href: "/repairs" },
       { label: "Billing & POS", icon: ReceiptLongRoundedIcon, href: "/billing" },
+      { label: "Selling History", icon: HistoryRoundedIcon, href: "/selling-history" },
+      { label: "System Audit History", icon: AccountTreeRoundedIcon, href: "/history" },
     ],
   },
 ];
 
 export function NavigationDrawer({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const pathname = usePathname();
   const { user, signOut, isOwner } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
-  };
-
-  const handleCopyStoreCode = () => {
-    if (user?.uid) {
-      navigator.clipboard.writeText(user.uid);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
   };
 
   // Hide drawer on authentication pages
@@ -100,7 +92,9 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
     pathname === "/repairs" ||
     pathname === "/smartphones" ||
     pathname === "/accessories" ||
-    pathname === "/billing";
+    pathname === "/billing" ||
+    pathname === "/selling-history" ||
+    pathname === "/history";
 
   if (!isRelevantPage) {
     return <>{children}</>;
@@ -359,61 +353,6 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
             </IconButton>
           </Tooltip>
         </Box>
-
-        {/* Store Code — only visible to Shop Owner */}
-        {isOwner && (
-          <Box
-            sx={{
-              mt: 1.25,
-              p: 1.25,
-              borderRadius: 2,
-              backgroundColor: "#f5f3ff",
-              border: "1px dashed #c4b5fd",
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "0.65rem", display: "block", mb: 0.5 }}
-            >
-              YOUR STORE CODE
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  flex: 1,
-                  fontSize: "0.65rem",
-                  color: "#4c1d95",
-                  fontFamily: "monospace",
-                  wordBreak: "break-all",
-                  lineHeight: 1.4,
-                }}
-              >
-                {user?.uid}
-              </Typography>
-              <Tooltip title={copied ? "Copied!" : "Copy Store Code"}>
-                <IconButton
-                  size="small"
-                  onClick={handleCopyStoreCode}
-                  sx={{
-                    p: 0.5,
-                    color: copied ? "#16a34a" : "#7c3aed",
-                    backgroundColor: copied ? "#dcfce7" : "#ede9fe",
-                    "&:hover": { backgroundColor: copied ? "#bbf7d0" : "#ddd6fe" },
-                    flexShrink: 0,
-                  }}
-                >
-                  {copied
-                    ? <CheckRoundedIcon sx={{ fontSize: 14 }} />
-                    : <ContentCopyRoundedIcon sx={{ fontSize: 14 }} />}
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <Typography variant="caption" sx={{ color: "#7c3aed", fontSize: "0.62rem", mt: 0.5, display: "block", opacity: 0.7 }}>
-              Share this with shopkeepers to link them to your store.
-            </Typography>
-          </Box>
-        )}
       </Box>
     </Box>
   );
@@ -481,57 +420,11 @@ export function NavigationDrawer({ children }: { children: React.ReactNode }) {
           flexDirection: "column",
         }}
       >
-        {/* Mobile Top AppBar */}
-        <AppBar
-          position="sticky"
-          elevation={0}
-          sx={{
-            display: { xs: "flex", md: "none" },
-            backgroundColor: "#ffffff",
-            borderBottom: "1px solid #e2e8f0",
-            color: "#0f172a",
-          }}
-        >
-          <Toolbar sx={{ minHeight: 56 }}>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 1.5, color: "#7c3aed" }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box
-                sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 1.5,
-                  background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#ffffff",
-                }}
-              >
-                <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
-              </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a" }}>
-                iDreams POS
-              </Typography>
-            </Box>
-          </Toolbar>
-        </AppBar>
+        <SystemTopBar onDrawerToggle={handleDrawerToggle} />
 
         {/* Page Content */}
         <Box sx={{ flex: 1, width: "100%" }}>{children}</Box>
       </Box>
-      <Snackbar
-        open={copied}
-        autoHideDuration={2000}
-        message="Store Code copied to clipboard!"
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      />
     </Box>
   );
 }

@@ -14,14 +14,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  AppBar,
-  Toolbar,
   Button,
   Tabs,
   Tab,
   LinearProgress,
   Stack,
-  Divider,
   CircularProgress,
 } from "@mui/material";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
@@ -29,12 +26,11 @@ import HeadphonesIcon from "@mui/icons-material/Headphones";
 import BuildCircleIcon from "@mui/icons-material/BuildCircle";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import LocalAtmIcon from "@mui/icons-material/LocalAtm";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import Link from "next/link";
-import { CartButton, PersistentCart } from "@/components/cart/persistent-cart";
+import { PersistentCart } from "@/components/cart/persistent-cart";
 import { useSmartphones } from "@/hooks/useSmartphones";
 import { useAccessories, categoryLabels } from "@/hooks/useAccessories";
 import { useRepairs } from "@/hooks/useRepairs";
@@ -78,62 +74,12 @@ export default function Home() {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      {/* Top App Header */}
-      <AppBar
-        position="sticky"
-        sx={{
-          backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
-        }}
-      >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box sx={{ height: 34, display: "flex", alignItems: "center" }}>
-              <img
-                src="/Images/i Dreams.png"
-                alt="iDreams Logo"
-                style={{ height: "100%", objectFit: "contain" }}
-              />
-            </Box>
-            <Divider orientation="vertical" flexItem sx={{ height: 20, my: "auto" }} />
-            <Box>
-              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                Management Hub • POS & Inventory
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Link href="/billing" style={{ textDecoration: "none" }}>
-              <Button
-                variant="contained"
-                startIcon={<PointOfSaleIcon />}
-                sx={{
-                  background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
-                  fontWeight: 700,
-                  fontSize: "0.82rem",
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 2,
-                  py: 0.75,
-                  boxShadow: "0 4px 12px rgba(124, 58, 237, 0.25)",
-                  "&:hover": { background: "linear-gradient(135deg, #6d28d9 0%, #c2410c 100%)" },
-                }}
-              >
-                Open POS Billing
-              </Button>
-            </Link>
-            <CartButton />
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="xl" sx={{ py: 3.5 }}>
+      <Container maxWidth="xl" sx={{ py: 2.5 }}>
         {/* Welcome & Overview Header */}
         <Paper
           sx={{
-            p: 3,
-            mb: 3.5,
+            p: 2.25,
+            mb: 2.5,
             background: "linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #ea580c 100%)",
             borderRadius: 3,
             color: "#ffffff",
@@ -402,10 +348,10 @@ export default function Home() {
             </Grid>
 
             {/* Section 2: Store Category Performance Breakdown */}
-            <Grid container spacing={3} sx={{ mb: 3.5 }}>
+            <Grid container spacing={2} sx={{ mb: 2.5 }}>
               {/* Revenue Distribution Progress */}
               <Grid size={{ xs: 12, md: 8 }}>
-                <Paper sx={{ p: 3, borderRadius: 2.5, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
+                <Paper sx={{ p: 2.25, borderRadius: 2.5, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -468,11 +414,11 @@ export default function Home() {
 
               {/* Payment Methods & POS Quick Summary */}
               <Grid size={{ xs: 12, md: 4 }}>
-                <Paper sx={{ p: 3, borderRadius: 2.5, border: "1px solid #e2e8f0", backgroundColor: "#ffffff", height: "100%" }}>
+                <Paper sx={{ p: 2.25, borderRadius: 2.5, border: "1px solid #e2e8f0", backgroundColor: "#ffffff", height: "100%" }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>
                     Settlement Methods
                   </Typography>
-                  <Typography variant="caption" sx={{ color: "#64748b", display: "block", mb: 2 }}>
+                  <Typography variant="caption" sx={{ color: "#64748b", display: "block", mb: 1.5 }}>
                     Customer payment preferences from live invoices
                   </Typography>
 

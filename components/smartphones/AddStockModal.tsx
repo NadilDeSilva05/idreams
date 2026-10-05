@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { brandNewCapableModels } from "@/data/phoneData";
 import {
   Dialog,
   DialogTitle,
@@ -52,6 +53,8 @@ interface AddStockModalProps {
   open: boolean;
   onClose: () => void;
   smartphone: GroupedSmartphone | null;
+  /** Condition override from parent tab — if not supplied, derived from model capability */
+  defaultType?: "Brand New" | "Used";
   onAddStock: (
     smartphoneId: string,
     stock:
@@ -64,9 +67,17 @@ export default function AddStockModal({
   open,
   onClose,
   smartphone,
+  defaultType,
   onAddStock,
 }: AddStockModalProps) {
-  const [phoneType, setPhoneType] = useState<"Brand New" | "Used">("Brand New");
+  // Determine whether this model can be sold as Brand New
+  const isBrandNewCapable = smartphone
+    ? brandNewCapableModels.has(smartphone.model)
+    : false;
+
+  // phoneType is locked: Brand New only if capable & defaultType says so, otherwise Used
+  const phoneType: "Brand New" | "Used" =
+    defaultType === "Brand New" && isBrandNewCapable ? "Brand New" : "Used";
   const [unitCount, setUnitCount] = useState(1);
   const [units, setUnits] = useState<UnitEntry[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -86,7 +97,6 @@ export default function AddStockModal({
 
   useEffect(() => {
     if (!open) return;
-    setPhoneType("Brand New");
     setUnitCount(1);
     setUnits([makeUnit(defaultStorage)]);
     setErrors({});
@@ -285,96 +295,43 @@ export default function AddStockModal({
             </Alert>
           )}
 
-          {/* Step 1 - Phone Condition */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2.5,
-              mb: 2,
-              borderRadius: 2.5,
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#ffffff",
-            }}
-          >
-            <Typography
-              sx={{ fontWeight: 700, color: "#1e293b", fontSize: "0.88rem", mb: 1.5 }}
-            >
-              Phone Condition
+          {/* Condition badge — read-only, determined by parent tab */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+            {phoneType === "Brand New" ? (
+              <>
+                <NewReleasesIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
+                <Chip
+                  label="Brand New"
+                  size="small"
+                  sx={{
+                    fontWeight: 800,
+                    backgroundColor: "#f5f3ff",
+                    color: "#7c3aed",
+                    border: "2px solid #7c3aed",
+                    fontSize: "0.82rem",
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <HistoryToggleOffIcon sx={{ color: "#ea580c", fontSize: 22 }} />
+                <Chip
+                  label="Used / Pre-Owned"
+                  size="small"
+                  sx={{
+                    fontWeight: 800,
+                    backgroundColor: "#fff7ed",
+                    color: "#ea580c",
+                    border: "2px solid #ea580c",
+                    fontSize: "0.82rem",
+                  }}
+                />
+              </>
+            )}
+            <Typography variant="caption" sx={{ color: "#64748b" }}>
+              Condition is set by the active tab
             </Typography>
-            <Grid container spacing={1.5}>
-              <Grid size={{ xs: 6 }}>
-                <Paper
-                  variant="outlined"
-                  onClick={() => setPhoneType("Brand New")}
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    borderWidth: 2,
-                    borderColor: phoneType === "Brand New" ? "#7c3aed" : "#e2e8f0",
-                    backgroundColor: phoneType === "Brand New" ? "#f5f3ff" : "#ffffff",
-                    transition: "all 0.18s ease",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.25,
-                    "&:hover": { borderColor: "#7c3aed" },
-                  }}
-                >
-                  <NewReleasesIcon
-                    sx={{
-                      color: phoneType === "Brand New" ? "#7c3aed" : "#94a3b8",
-                      fontSize: 26,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: "0.88rem", color: "#1e293b" }}>
-                      Brand New
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#64748b" }}>
-                      Factory sealed
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-
-              <Grid size={{ xs: 6 }}>
-                <Paper
-                  variant="outlined"
-                  onClick={() => setPhoneType("Used")}
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    borderWidth: 2,
-                    borderColor: phoneType === "Used" ? "#ea580c" : "#e2e8f0",
-                    backgroundColor: phoneType === "Used" ? "#fff7ed" : "#ffffff",
-                    transition: "all 0.18s ease",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.25,
-                    "&:hover": { borderColor: "#ea580c" },
-                  }}
-                >
-                  <HistoryToggleOffIcon
-                    sx={{
-                      color: phoneType === "Used" ? "#ea580c" : "#94a3b8",
-                      fontSize: 26,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: "0.88rem", color: "#1e293b" }}>
-                      Used / Pre-Owned
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#64748b" }}>
-                      Includes battery check
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Paper>
+          </Box>
 
           {/* Step 2 - Number of Units */}
           <Paper
@@ -785,8 +742,8 @@ export default function AddStockModal({
             {submitting
               ? "Adding Stock..."
               : unitCount > 1
-              ? `Add ${unitCount} Units`
-              : "Add to Stock"}
+                ? `Add ${unitCount} Units`
+                : "Add to Stock"}
           </Button>
         </DialogActions>
       </form>
