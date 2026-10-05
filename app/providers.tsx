@@ -5,6 +5,7 @@ import { ReactNode } from "react";
 import { EmotionRootStyleRegistry } from "@/app/emotion-cache";
 
 const theme = createTheme({
+  spacing: 6,
   palette: {
     primary: {
       main: "#7c3aed", // Logo Royal Purple/Violet
@@ -103,7 +104,7 @@ const theme = createTheme({
           textTransform: "none",
           fontWeight: 600,
           borderRadius: 8,
-          padding: "10px 20px",
+          padding: "8px 14px",
           transition: "all 0.3s ease",
         },
         contained: {
@@ -124,7 +125,7 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
+          borderRadius: 12,
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
           border: "1px solid rgba(0, 0, 0, 0.05)",
           transition: "all 0.3s ease",
@@ -137,7 +138,7 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 10,
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
           border: "1px solid rgba(0, 0, 0, 0.05)",
         },
@@ -170,6 +171,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderColor: "#e2e8f0",
+          padding: "10px 12px",
         },
         head: {
           backgroundColor: "#f1f5f9",

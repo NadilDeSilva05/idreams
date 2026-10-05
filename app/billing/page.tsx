@@ -3,7 +3,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  AppBar,
   Box,
   Button,
   Chip,
@@ -17,7 +16,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Toolbar,
   Typography,
   Tabs,
   Tab,
@@ -49,7 +47,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import PrintIcon from "@mui/icons-material/Print";
 import UndoIcon from "@mui/icons-material/Undo";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { CartButton, PersistentCart } from "@/components/cart/persistent-cart";
+import { PersistentCart } from "@/components/cart/persistent-cart";
 import InvoiceReceiptView, { Bill } from "@/components/billing/InvoiceReceiptView";
 import PosCheckoutTerminal from "@/components/billing/PosCheckoutTerminal";
 import PaymentStatusModal from "@/components/billing/PaymentStatusModal";
@@ -330,57 +328,6 @@ export default function BillingPage() {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      {/* Top Main AppBar */}
-      <AppBar
-        position="sticky"
-        sx={{
-          backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
-        }}
-      >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 2,
-                backgroundColor: "#f5f3ff",
-                color: "#7c3aed",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ReceiptLongIcon sx={{ fontSize: 22 }} />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: "#7c3aed", lineHeight: 1.2 }}>
-                Billing & POS
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-                Instant Checkout • Invoicing
-              </Typography>
-            </Box>
-            {!isOwner && (
-              <Chip
-                label="Shopkeeper"
-                size="small"
-                sx={{
-                  backgroundColor: "#fff7ed",
-                  color: "#ea580c",
-                  fontWeight: 700,
-                  fontSize: "0.7rem",
-                  border: "1px solid #fed7aa",
-                }}
-              />
-            )}
-          </Box>
-
-          <CartButton />
-        </Toolbar>
-      </AppBar>
-
       <Container maxWidth="xl" sx={{ py: 3.5 }}>
         {/* Navigation Tabs */}
         <Paper
@@ -436,7 +383,7 @@ export default function BillingPage() {
             {/* KPI Cards Row */}
             <Grid container spacing={3} sx={{ mb: 3.5 }}>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Paper sx={{ p: 2.5, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
+                <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
                   <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
                     Total Invoices
                   </Typography>
@@ -446,7 +393,7 @@ export default function BillingPage() {
                 </Paper>
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Paper sx={{ p: 2.5, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
+                <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
                   <Typography variant="caption" sx={{ color: "#059669", fontWeight: 700, textTransform: "uppercase" }}>
                     Paid in Full
                   </Typography>
@@ -456,7 +403,7 @@ export default function BillingPage() {
                 </Paper>
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Paper sx={{ p: 2.5, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
+                <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #e2e8f0", backgroundColor: "#ffffff" }}>
                   <Typography variant="caption" sx={{ color: "#7c3aed", fontWeight: 700, textTransform: "uppercase" }}>
                     Total Revenue
                   </Typography>
@@ -470,8 +417,8 @@ export default function BillingPage() {
             {/* Filter Section with Add New Bill Button in Header */}
             <Paper
               sx={{
-                p: 2.5,
-                mb: 3.5,
+                p: 2.25,
+                mb: 2.5,
                 borderRadius: 2,
                 border: "1px solid #e2e8f0",
                 backgroundColor: "#ffffff",
@@ -793,7 +740,7 @@ export default function BillingPage() {
             background: "linear-gradient(135deg, #7c3aed, #9333ea)",
             color: "#ffffff",
             py: 1.75,
-            px: 3,
+            px: 2,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -841,7 +788,7 @@ export default function BillingPage() {
             background: "linear-gradient(135deg, #f59e0b, #dc2626)",
             color: "#ffffff",
             py: 2,
-            px: 3,
+            px: 2,
             display: "flex",
             alignItems: "center",
             gap: 1.25,
@@ -858,7 +805,7 @@ export default function BillingPage() {
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: 2.25 }}>
           <Box sx={{ mb: 2.5, p: 2, backgroundColor: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 2 }}>
             <Typography variant="body2" sx={{ color: "#9a3412", fontWeight: 600, lineHeight: 1.6 }}>
               Reversing this bill will:
@@ -883,7 +830,7 @@ export default function BillingPage() {
           </Box>
 
           {undoBillTarget && (
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 1.5 }}>
               <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 Bill Summary:
               </Typography>
@@ -923,7 +870,7 @@ export default function BillingPage() {
           />
         </DialogContent>
 
-        <DialogActions sx={{ p: 2.5, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", gap: 1 }}>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", gap: 1 }}>
           <Button
             onClick={() => setUndoBillTarget(null)}
             disabled={isUndoing}

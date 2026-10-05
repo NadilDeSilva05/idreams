@@ -10,8 +10,6 @@ import {
   Box,
   Typography,
   IconButton,
-  Tabs,
-  Tab,
   Chip,
   Paper,
   TextField,
@@ -48,6 +46,7 @@ interface ViewStockModalProps {
   onOpenAddStock: (smartphone: GroupedSmartphone) => void;
   onDeleteStock: (smartphoneId: string, stockId: string) => Promise<void>;
   isOwner?: boolean;
+  condition?: "Brand New" | "Used";
 }
 
 export default function ViewStockModal({
@@ -57,8 +56,8 @@ export default function ViewStockModal({
   onOpenAddStock,
   onDeleteStock,
   isOwner = true,
+  condition = "Brand New",
 }: ViewStockModalProps) {
-  const [activeCategoryTab, setActiveCategoryTab] = useState<"all" | "Brand New" | "Used">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedImei, setCopiedImei] = useState<string | null>(null);
 
@@ -68,20 +67,15 @@ export default function ViewStockModal({
 
   const stocks = smartphone?.stocks || [];
 
-  const brandNewCount = useMemo(
-    () => stocks.filter((s) => s.type === "Brand New").length,
-    [stocks]
-  );
-  const usedCount = useMemo(
-    () => stocks.filter((s) => s.type === "Used").length,
-    [stocks]
+  // Filter stocks strictly by the phone's condition (Brand New or Used)
+  const conditionStocks = useMemo(
+    () => stocks.filter((s) => s.type === condition),
+    [stocks, condition]
   );
 
-  // Filter stocks according to tab and search query
+  // Filter stocks according to search query
   const filteredStocks = useMemo(() => {
-    return stocks.filter((item) => {
-      const matchesCategory =
-        activeCategoryTab === "all" || item.type === activeCategoryTab;
+    return conditionStocks.filter((item) => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -89,9 +83,9 @@ export default function ViewStockModal({
         item.storage.toLowerCase().includes(q) ||
         (item.color && item.color.toLowerCase().includes(q)) ||
         (item.notes && item.notes.toLowerCase().includes(q));
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [stocks, activeCategoryTab, searchQuery]);
+  }, [conditionStocks, searchQuery]);
 
   // Group filtered stocks by storage capacity
   const stocksByStorage = useMemo(() => {
@@ -221,7 +215,10 @@ export default function ViewStockModal({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            background: "linear-gradient(135deg, #7c3aed 0%, #ea580c 100%)",
+            background:
+              condition === "Brand New"
+                ? "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)"
+                : "linear-gradient(135deg, #ea580c 0%, #f97316 100%)",
             color: "#ffffff",
             py: 2.2,
             px: 3,
@@ -244,18 +241,18 @@ export default function ViewStockModal({
                   {smartphone.brand} {smartphone.model}
                 </Typography>
                 <Chip
-                  label={`${stocks.length} Units Total`}
+                  label={condition}
                   size="small"
                   sx={{
                     backgroundColor: "rgba(255, 255, 255, 0.25)",
                     color: "#ffffff",
-                    fontWeight: 700,
+                    fontWeight: 800,
                     fontSize: "0.72rem",
                   }}
                 />
               </Box>
               <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.85)", fontWeight: 600 }}>
-                Inventory stock breakdown by condition and storage capacity
+                {condition === "Brand New" ? "Factory Sealed Inventory" : "Pre-Owned Tested Inventory"} • {conditionStocks.length} available units
               </Typography>
             </Box>
           </Box>
@@ -265,7 +262,7 @@ export default function ViewStockModal({
         </DialogTitle>
 
         {/* Action Bar & Quick Stats */}
-        <Box sx={{ px: 3, pt: 2.5, pb: 1, backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+        <Box sx={{ px: 3, py: 2, backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
           <Box
             sx={{
               display: "flex",
@@ -273,109 +270,85 @@ export default function ViewStockModal({
               alignItems: "center",
               flexWrap: "wrap",
               gap: 2,
-              mb: 2,
             }}
           >
-            {/* Condition Stats Chips */}
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Chip
-                icon={<NewReleasesIcon sx={{ fontSize: "16px !important", color: "#7c3aed !important" }} />}
-                label={`Brand New: ${brandNewCount} units`}
-                sx={{
-                  backgroundColor: "#f5f3ff",
-                  color: "#6d28d9",
-                  fontWeight: 700,
-                  border: "1px solid #ddd6fe",
-                }}
-              />
-              <Chip
-                icon={<HistoryToggleOffIcon sx={{ fontSize: "16px !important", color: "#ea580c !important" }} />}
-                label={`Used / Pre-Owned: ${usedCount} units`}
-                sx={{
-                  backgroundColor: "#fff7ed",
-                  color: "#c2410c",
-                  fontWeight: 700,
-                  border: "1px solid #fed7aa",
-                }}
-              />
-            </Box>
-
-            {/* Quick Add Stock Button */}
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                onClose();
-                onOpenAddStock(smartphone);
-              }}
+            {/* Condition Stat Chip */}
+            <Chip
+              icon={
+                condition === "Brand New" ? (
+                  <NewReleasesIcon sx={{ fontSize: "16px !important", color: "#7c3aed !important" }} />
+                ) : (
+                  <HistoryToggleOffIcon sx={{ fontSize: "16px !important", color: "#ea580c !important" }} />
+                )
+              }
+              label={`${condition} Stock: ${conditionStocks.length} available units`}
               sx={{
-                background: "linear-gradient(135deg, #7c3aed, #ea580c)",
-                fontWeight: 700,
+                backgroundColor: condition === "Brand New" ? "#f5f3ff" : "#fff7ed",
+                color: condition === "Brand New" ? "#6d28d9" : "#c2410c",
+                fontWeight: 800,
                 fontSize: "0.82rem",
-                textTransform: "none",
-                borderRadius: 2,
-                px: 2,
-                boxShadow: "0 3px 10px rgba(124, 58, 237, 0.2)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #6d28d9, #c2410c)",
-                },
+                border: `1.5px solid ${condition === "Brand New" ? "#ddd6fe" : "#fed7aa"}`,
+                py: 2,
+                px: 0.5,
               }}
-            >
-              Add New Stock
-            </Button>
-          </Box>
-
-          {/* Search and Tabs */}
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-            <Tabs
-              value={activeCategoryTab}
-              onChange={(_, val) => setActiveCategoryTab(val)}
-              sx={{
-                minHeight: 40,
-                "& .MuiTabs-indicator": {
-                  backgroundColor: "#7c3aed",
-                  height: 3,
-                },
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 700,
-                  fontSize: "0.85rem",
-                  minHeight: 40,
-                  py: 0.5,
-                  px: 1.75,
-                  color: "#64748b",
-                  "&.Mui-selected": { color: "#7c3aed" },
-                },
-              }}
-            >
-              <Tab label={`All Stocks (${stocks.length})`} value="all" />
-              <Tab label={`Brand New (${brandNewCount})`} value="Brand New" />
-              <Tab label={`Used / Pre-Owned (${usedCount})`} value="Used" />
-            </Tabs>
-
-            <TextField
-              size="small"
-              placeholder="Search by IMEI, storage, color..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              sx={{ width: { xs: "100%", sm: 260 }, backgroundColor: "#ffffff" }}
             />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: { xs: 1, sm: "initial" } }}>
+              <TextField
+                size="small"
+                placeholder={`Search ${condition} units by IMEI, color...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+                sx={{ minWidth: 260, backgroundColor: "#ffffff" }}
+              />
+
+              {/* Quick Add Stock Button */}
+              {isOwner && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    onClose();
+                    onOpenAddStock(smartphone);
+                  }}
+                  sx={{
+                    background:
+                      condition === "Brand New"
+                        ? "linear-gradient(135deg, #7c3aed, #9333ea)"
+                        : "linear-gradient(135deg, #ea580c, #f97316)",
+                    fontWeight: 700,
+                    fontSize: "0.82rem",
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 2,
+                    py: 0.9,
+                    whiteSpace: "nowrap",
+                    boxShadow:
+                      condition === "Brand New"
+                        ? "0 3px 10px rgba(124, 58, 237, 0.2)"
+                        : "0 3px 10px rgba(234, 88, 12, 0.2)",
+                  }}
+                >
+                  Add {condition} Stock
+                </Button>
+              )}
+            </Box>
           </Box>
         </Box>
 
         {/* Modal Main Scrollable Content */}
         <DialogContent sx={{ p: 3, backgroundColor: "#f8fafc", flex: 1, overflowY: "auto" }}>
-          {stocks.length === 0 ? (
+          {conditionStocks.length === 0 ? (
             <Paper
               elevation={0}
               sx={{
@@ -388,10 +361,10 @@ export default function ViewStockModal({
             >
               <InventoryIcon sx={{ fontSize: 48, color: "#94a3b8", mb: 1.5 }} />
               <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b", mb: 0.5 }}>
-                No Stock Registered Yet
+                No {condition} Stock Registered Yet
               </Typography>
-              <Typography variant="body2" sx={{ color: "#64748b", mb: 3, maxWidth: 360, mx: "auto" }}>
-                There are currently no individual stock units added for this smartphone model.
+              <Typography variant="body2" sx={{ color: "#64748b", mb: 3, maxWidth: 380, mx: "auto" }}>
+                There are currently no {condition.toLowerCase()} units in inventory for {smartphone.brand} {smartphone.model}.
               </Typography>
               {isOwner && (
                 <Button
@@ -402,14 +375,17 @@ export default function ViewStockModal({
                     onOpenAddStock(smartphone);
                   }}
                   sx={{
-                    background: "linear-gradient(135deg, #7c3aed, #ea580c)",
+                    background:
+                      condition === "Brand New"
+                        ? "linear-gradient(135deg, #7c3aed, #9333ea)"
+                        : "linear-gradient(135deg, #ea580c, #f97316)",
                     fontWeight: 700,
                     textTransform: "none",
                     borderRadius: 2,
                     px: 3,
                   }}
                 >
-                  Add First Stock Unit
+                  Add First {condition} Unit
                 </Button>
               )}
             </Paper>
@@ -425,113 +401,87 @@ export default function ViewStockModal({
               }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#1e293b", mb: 0.5 }}>
-                No stock items match your filter
+                No {condition} stock items match your search
               </Typography>
               <Typography variant="body2" sx={{ color: "#64748b", mb: 2 }}>
-                Try selecting a different tab or clearing your search term.
+                Try searching with a different keyword or IMEI number.
               </Typography>
               <Button
                 size="small"
-                onClick={() => {
-                  setActiveCategoryTab("all");
-                  setSearchQuery("");
-                }}
-                sx={{ color: "#7c3aed", fontWeight: 700, textTransform: "none" }}
+                onClick={() => setSearchQuery("")}
+                sx={{ color: condition === "Brand New" ? "#7c3aed" : "#ea580c", fontWeight: 700, textTransform: "none" }}
               >
-                Clear Search & Filters
+                Clear Search
               </Button>
             </Paper>
           ) : (
             <Stack spacing={3}>
-              {stocksByStorage.map(([storageCapacity, items]) => {
-                const brandNewInStorage = items.filter((i) => i.type === "Brand New").length;
-                const usedInStorage = items.filter((i) => i.type === "Used").length;
-
-                return (
-                  <Paper
-                    key={storageCapacity}
-                    elevation={0}
+              {stocksByStorage.map(([storageCapacity, items]) => (
+                <Paper
+                  key={storageCapacity}
+                  elevation={0}
+                  sx={{
+                    borderRadius: 2.5,
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#ffffff",
+                    overflow: "hidden",
+                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+                  }}
+                >
+                  {/* Storage Group Header */}
+                  <Box
                     sx={{
-                      borderRadius: 2.5,
-                      border: "1px solid #e2e8f0",
-                      backgroundColor: "#ffffff",
-                      overflow: "hidden",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+                      p: 2,
+                      px: 2.5,
+                      backgroundColor: "#f1f5f9",
+                      borderBottom: "1px solid #e2e8f0",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 1,
                     }}
                   >
-                    {/* Storage Group Header */}
-                    <Box
-                      sx={{
-                        p: 2,
-                        px: 2.5,
-                        backgroundColor: "#f1f5f9",
-                        borderBottom: "1px solid #e2e8f0",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 1,
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-                        <Box
-                          sx={{
-                            p: 0.6,
-                            backgroundColor: "#7c3aed",
-                            color: "#ffffff",
-                            borderRadius: 1.5,
-                            display: "flex",
-                          }}
-                        >
-                          <StorageIcon sx={{ fontSize: 18 }} />
-                        </Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a" }}>
-                          {storageCapacity} Capacity
-                        </Typography>
-                        <Chip
-                          label={`${items.length} ${items.length === 1 ? "unit" : "units"}`}
-                          size="small"
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: "0.75rem",
-                            backgroundColor: "#e2e8f0",
-                            color: "#334155",
-                          }}
-                        />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                      <Box
+                        sx={{
+                          p: 0.6,
+                          backgroundColor: condition === "Brand New" ? "#7c3aed" : "#ea580c",
+                          color: "#ffffff",
+                          borderRadius: 1.5,
+                          display: "flex",
+                        }}
+                      >
+                        <StorageIcon sx={{ fontSize: 18 }} />
                       </Box>
-
-                      {/* Breakdown for this storage */}
-                      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                        {brandNewInStorage > 0 && (
-                          <Chip
-                            label={`${brandNewInStorage} New`}
-                            size="small"
-                            sx={{
-                              height: 22,
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              backgroundColor: "#f5f3ff",
-                              color: "#6d28d9",
-                              border: "1px solid #ddd6fe",
-                            }}
-                          />
-                        )}
-                        {usedInStorage > 0 && (
-                          <Chip
-                            label={`${usedInStorage} Used`}
-                            size="small"
-                            sx={{
-                              height: 22,
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              backgroundColor: "#fff7ed",
-                              color: "#c2410c",
-                              border: "1px solid #fed7aa",
-                            }}
-                          />
-                        )}
-                      </Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                        {storageCapacity} Capacity
+                      </Typography>
+                      <Chip
+                        label={`${items.length} ${items.length === 1 ? "unit" : "units"}`}
+                        size="small"
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: "0.75rem",
+                          backgroundColor: "#e2e8f0",
+                          color: "#334155",
+                        }}
+                      />
                     </Box>
+
+                    <Chip
+                      label={`${items.length} ${condition}`}
+                      size="small"
+                      sx={{
+                        height: 22,
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        backgroundColor: condition === "Brand New" ? "#f5f3ff" : "#fff7ed",
+                        color: condition === "Brand New" ? "#6d28d9" : "#c2410c",
+                        border: `1px solid ${condition === "Brand New" ? "#ddd6fe" : "#fed7aa"}`,
+                      }}
+                    />
+                  </Box>
 
                     {/* Stock items list under this storage */}
                     <Box sx={{ p: 2 }}>
@@ -632,9 +582,8 @@ export default function ViewStockModal({
                                           stockItem.type === "Brand New" ? "#f5f3ff" : "#fff7ed",
                                         color:
                                           stockItem.type === "Brand New" ? "#6d28d9" : "#c2410c",
-                                        border: `1px solid ${
-                                          stockItem.type === "Brand New" ? "#ddd6fe" : "#fed7aa"
-                                        }`,
+                                        border: `1px solid ${stockItem.type === "Brand New" ? "#ddd6fe" : "#fed7aa"
+                                          }`,
                                       }}
                                     />
 
@@ -702,8 +651,7 @@ export default function ViewStockModal({
                       </Stack>
                     </Box>
                   </Paper>
-                );
-              })}
+                ))}
             </Stack>
           )}
         </DialogContent>

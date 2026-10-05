@@ -14,8 +14,6 @@ import {
   TableRow,
   Typography,
   Chip,
-  AppBar,
-  Toolbar,
   TextField,
   FormControl,
   InputLabel,
@@ -51,7 +49,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import { Repair } from "@/types/repair";
 import AddRepairModal from "@/components/repairs/AddRepairModal";
 import { useCart } from "@/context/cart-context";
-import { PersistentCart, CartButton } from "@/components/cart/persistent-cart";
+import { PersistentCart } from "@/components/cart/persistent-cart";
 import { useRepairs } from "@/hooks/useRepairs";
 import { useAuth } from "@/context/auth-context";
 import { generatePickupMessage, getWhatsAppShareUrl } from "@/lib/whatsapp";
@@ -235,49 +233,11 @@ export default function RepairsPage() {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      <AppBar
-        position="sticky"
-        sx={{
-          backgroundColor: "#ffffff",
-          boxShadow: "0 2px 8px rgba(124, 58, 237, 0.08)",
-        }}
-      >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box sx={{ height: 32, display: "flex", alignItems: "center" }}>
-              <img
-                src="/Images/i Dreams.png"
-                alt="iDreams Logo"
-                style={{ height: "100%", objectFit: "contain" }}
-              />
-            </Box>
-            <Divider orientation="vertical" flexItem sx={{ height: 18, my: "auto" }} />
-            <Typography variant="h6" component="div" sx={{ fontWeight: 800, color: "#7c3aed", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 0.75 }}>
-              <BuildCircleIcon sx={{ color: "#7c3aed", fontSize: 22 }} />
-              Repairs Management
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            <Chip
-              label={`${repairs.length} Total Tickets`}
-              size="small"
-              sx={{
-                backgroundColor: "#f5f3ff",
-                color: "#7c3aed",
-                fontWeight: 700,
-                border: "1px solid #ddd6fe",
-              }}
-            />
-            <CartButton />
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: 2.5 }}>
           {/* Filter & Action Section */}
           <Paper
             sx={{
-              p: 3,
+              p: 2.25,
               mb: 4,
               border: "1px solid #e2e8f0",
               borderRadius: 2.5,
@@ -394,7 +354,7 @@ export default function RepairsPage() {
               />
             </Box>
 
-            <Divider sx={{ mb: 2.5 }} />
+            <Divider sx={{ mb: 2 }} />
 
             {/* Filter Controls Row */}
             <Grid container spacing={2} sx={{ alignItems: "center" }}>
@@ -551,7 +511,7 @@ export default function RepairsPage() {
               </Button>
             </Paper>
           ) : (
-            <Grid container spacing={2.5}>
+            <Grid container spacing={2}>
               {filteredRepairs.map((repair) => {
                 const isCompleted = repair.status === "completed";
                 const isInProgress = repair.status === "in-progress";
@@ -650,7 +610,7 @@ export default function RepairsPage() {
                         </Box>
 
                         {/* Device Info */}
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25, mb: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25, mb: 1.5 }}>
                           <Box
                             sx={{
                               width: 44,
@@ -757,7 +717,7 @@ export default function RepairsPage() {
                         </Box>
 
                         {/* Price Badge */}
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 2 }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 1.5 }}>
                           <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
                             Service Charge:
                           </Typography>
@@ -947,7 +907,7 @@ export default function RepairsPage() {
                   background: "linear-gradient(135deg, #7c3aed, #ea580c)",
                   fontWeight: 700,
                   textTransform: "none",
-                  px: 3,
+                  px: 2,
                   borderRadius: 1.5,
                   "&:hover": {
                     background: "linear-gradient(135deg, #6d28d9, #c2410c)",
@@ -1011,9 +971,9 @@ export default function RepairsPage() {
                 </Typography>
               </Box>
             </DialogTitle>
-            <DialogContent sx={{ pt: 3 }}>
+            <DialogContent sx={{ pt: 2 }}>
               {whatsAppModalRepair && (
-                <Stack spacing={2.5}>
+                <Stack spacing={2}>
                   {/* Customer and Contact Details Cards */}
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -1077,7 +1037,7 @@ export default function RepairsPage() {
                 </Stack>
               )}
             </DialogContent>
-            <DialogActions sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", gap: 1 }}>
+            <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0", gap: 1 }}>
               <Button
                 onClick={() => setWhatsAppModalRepair(null)}
                 variant="outlined"
